@@ -1,0 +1,1189 @@
+{
+  "summary": {
+    "title": "OTP Service Threat Model",
+    "owner": "Security Team",
+    "description": "STRIDE Threat Model สำหรับ OTP Service — Request OTP, Verify OTP, SMS Gateway, Redis Storage, Cloudflare Edge",
+    "id": 0
+  },
+  "detail": {
+    "contributors": [
+      {
+        "name": "Security Architect"
+      }
+    ],
+    "diagrams": [
+      {
+        "title": "Diagram 1 — Request OTP Flow",
+        "thumbnail": "./public/content/images/thumbnail.stride.jpg",
+        "diagramType": "STRIDE",
+        "id": 0,
+        "diagramJson": {
+          "cells": [
+            {
+              "type": "tm.Actor",
+              "size": {
+                "width": 160,
+                "height": 80
+              },
+              "position": {
+                "x": 30,
+                "y": 220
+              },
+              "angle": 0,
+              "id": "actor-user-req",
+              "z": 1,
+              "hasOpenThreats": true,
+              "outOfScope": false,
+              "description": "ผู้ใช้งานที่ขอ OTP ผ่าน mobile หรือ web",
+              "threats": [
+                {
+                  "status": "Open",
+                  "severity": "High",
+                  "title": "SIM Swap Attack",
+                  "type": "Spoofing",
+                  "description": "ผู้โจมตีแจ้งซิมหายและขอซิมใหม่จาก carrier เพื่อรับ OTP SMS แทนเจ้าของบัญชีจริง",
+                  "mitigation": "ตรวจสอบว่าซิมเพิ่งเปลี่ยนใน 72 ชม. ให้ block และแจ้ง email เจ้าของบัญชี รองรับ TOTP สำหรับ high-risk action"
+                },
+                {
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "title": "SMS Bombing — สุ่มเบอร์",
+                  "type": "Denial of service",
+                  "description": "ผู้โจมตีสุ่มเบอร์แล้วยิง OTP request เพื่อ DoS SMS Gateway และ spam เหยื่อ",
+                  "mitigation": "Cloudflare Rate Limit + Turnstile กัน bot. Dummy session สำหรับเบอร์ที่ไม่ได้ลงทะเบียน"
+                }
+              ],
+              "attrs": {
+                "text": {
+                  "text": "User / Mobile App"
+                }
+              }
+            },
+            {
+              "type": "tm.Process",
+              "size": {
+                "width": 110,
+                "height": 110
+              },
+              "position": {
+                "x": 230,
+                "y": 195
+              },
+              "angle": 0,
+              "id": "proc-cloudflare-req",
+              "z": 2,
+              "hasOpenThreats": true,
+              "outOfScope": false,
+              "description": "Cloudflare Edge: Rate Limiting, WAF, DDoS Protection, Turnstile bot protection, CF-Connecting-IP header",
+              "threats": [
+                {
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "title": "DDoS / Request Flood",
+                  "type": "Denial of service",
+                  "description": "ผู้โจมตียิง request จำนวนมากเพื่อทำให้ระบบล่ม",
+                  "mitigation": "Cloudflare DDoS Protection L3/L4/L7 อัตโนมัติ. Rate Limit: POST /otp/request max 3 req/min per IP"
+                },
+                {
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "title": "Bot / Scripted Attack",
+                  "type": "Denial of service",
+                  "description": "Bot ยิง OTP request อัตโนมัติเพื่อ spam หรือ enumerate users",
+                  "mitigation": "Cloudflare Turnstile (CAPTCHA-less bot detection) ก่อน submit request"
+                },
+                {
+                  "status": "Mitigated",
+                  "severity": "Medium",
+                  "title": "IP Spoofing via X-Forwarded-For",
+                  "type": "Spoofing",
+                  "description": "ผู้โจมตีปลอม X-Forwarded-For header เพื่อ bypass rate limit",
+                  "mitigation": "NestJS อ่าน CF-Connecting-IP header แทน. Whitelist เฉพาะ Cloudflare IP ranges ใน firewall"
+                }
+              ],
+              "attrs": {
+                "text": {
+                  "text": "Cloudflare Edge\n(WAF + Rate Limit)"
+                }
+              }
+            },
+            {
+              "type": "tm.Process",
+              "size": {
+                "width": 110,
+                "height": 110
+              },
+              "position": {
+                "x": 390,
+                "y": 100
+              },
+              "angle": 0,
+              "id": "proc-api-gateway-req",
+              "z": 3,
+              "hasOpenThreats": true,
+              "outOfScope": false,
+              "description": "NestJS API Gateway: ThrottlerGuard (per phone), ValidationPipe, Helmet headers, CORS",
+              "threats": [
+                {
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "title": "Rate Limit Bypass (per phone)",
+                  "type": "Denial of service",
+                  "description": "Cloudflare rate limit ต่อ IP แต่โจรใช้หลาย IP ยัง flood ต่อ phone number เดิมได้",
+                  "mitigation": "ThrottlerModule rate limit per phone number ใน NestJS เป็น second layer"
+                },
+                {
+                  "status": "Mitigated",
+                  "severity": "Medium",
+                  "title": "Stack Trace Leakage",
+                  "type": "Information disclosure",
+                  "description": "Internal error expose stack trace ไปยัง client",
+                  "mitigation": "GlobalExceptionFilter คืน generic error message เสมอ"
+                }
+              ],
+              "attrs": {
+                "text": {
+                  "text": "API Gateway\n(ThrottlerGuard)"
+                }
+              }
+            },
+            {
+              "type": "tm.Process",
+              "size": {
+                "width": 110,
+                "height": 110
+              },
+              "position": {
+                "x": 390,
+                "y": 310
+              },
+              "angle": 0,
+              "id": "proc-otp-service-req",
+              "z": 4,
+              "hasOpenThreats": true,
+              "outOfScope": false,
+              "description": "OTP Service: สร้าง OTP ด้วย CSPRNG, จัดการ progressive lockout, เรียก SMS Gateway",
+              "threats": [
+                {
+                  "status": "Mitigated",
+                  "severity": "Medium",
+                  "title": "User Enumeration",
+                  "type": "Information disclosure",
+                  "description": "Response ต่างกันระหว่างเบอร์ที่ลงทะเบียน vs ไม่ได้ลงทะเบียน ทำให้ enumerate users ได้",
+                  "mitigation": "ตอบ generic message เสมอ. คืน dummy sessionId พร้อม simulateSmsDelay() สำหรับเบอร์ที่ไม่มีในระบบ"
+                },
+                {
+                  "status": "Mitigated",
+                  "severity": "Medium",
+                  "title": "Repudiation — ปฏิเสธการขอ OTP",
+                  "type": "Repudiation",
+                  "description": "ผู้ใช้อ้างว่าไม่ได้ขอ OTP",
+                  "mitigation": "Audit log ทุก request พร้อม timestamp, IP จาก CF-Connecting-IP, masked phone (ไม่ log OTP value)"
+                }
+              ],
+              "attrs": {
+                "text": {
+                  "text": "OTP Service\n(Business Logic)"
+                }
+              }
+            },
+            {
+              "type": "tm.Store",
+              "size": {
+                "width": 160,
+                "height": 80
+              },
+              "position": {
+                "x": 570,
+                "y": 330
+              },
+              "angle": 0,
+              "id": "store-redis-req",
+              "z": 5,
+              "hasOpenThreats": true,
+              "outOfScope": false,
+              "isALog": false,
+              "storesCredentials": false,
+              "isEncrypted": false,
+              "description": "Redis: เก็บ hashed OTP พร้อม TTL 5 นาที ไม่เก็บ OTP plaintext",
+              "threats": [
+                {
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "title": "OTP Stored as Plaintext",
+                  "type": "Tampering",
+                  "description": "หาก OTP ถูกเก็บเป็น plaintext ผู้ที่เข้าถึง Redis ได้จะขโมย OTP ทั้งหมดได้",
+                  "mitigation": "เก็บเฉพาะ SHA-256(otp:sessionId). TTL auto-expire 300 วินาที"
+                },
+                {
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "title": "OTP Leaked via Logs",
+                  "type": "Information disclosure",
+                  "description": "OTP value ปรากฏใน application logs หรือ Redis logs",
+                  "mitigation": "ห้าม log OTP value. Mask phone number ใน logs ทุกที่"
+                }
+              ],
+              "attrs": {
+                "text": {
+                  "text": "Redis (OTP Store)\nTTL 5min | SHA-256"
+                }
+              }
+            },
+            {
+              "type": "tm.Actor",
+              "size": {
+                "width": 160,
+                "height": 80
+              },
+              "position": {
+                "x": 760,
+                "y": 100
+              },
+              "angle": 0,
+              "id": "actor-sms-req",
+              "z": 6,
+              "hasOpenThreats": true,
+              "outOfScope": false,
+              "description": "Third-party SMS provider เช่น Twilio หรือ AWS SNS",
+              "threats": [
+                {
+                  "status": "Open",
+                  "severity": "High",
+                  "title": "SMS Interception (SS7)",
+                  "type": "Tampering",
+                  "description": "ผู้โจมตีใช้ช่องโหว่ SS7 protocol ดัก SMS ระหว่างทาง",
+                  "mitigation": "แนะนำให้ใช้ TOTP (Authenticator App) แทน SMS สำหรับ high-value transaction"
+                },
+                {
+                  "status": "Mitigated",
+                  "severity": "Medium",
+                  "title": "SMS Cost Attack",
+                  "type": "Denial of service",
+                  "description": "ผู้โจมตี flood request ทำให้ค่า SMS พุ่ง",
+                  "mitigation": "Cloudflare + Rate Limit กัน flood. Dummy session ไม่ส่ง SMS จริง. Budget cap กับ provider"
+                }
+              ],
+              "attrs": {
+                "text": {
+                  "text": "SMS Gateway\n(Twilio / AWS SNS)"
+                }
+              }
+            },
+            {
+              "type": "tm.Actor",
+              "size": {
+                "width": 160,
+                "height": 80
+              },
+              "position": {
+                "x": 760,
+                "y": 310
+              },
+              "angle": 0,
+              "id": "actor-phone-req",
+              "z": 7,
+              "hasOpenThreats": false,
+              "outOfScope": true,
+              "reasonOutOfScope": "อยู่นอก control ของระบบ — end device ของผู้ใช้",
+              "description": "อุปกรณ์ของผู้ใช้ที่รับ OTP SMS",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "User Phone\n(SMS Recipient)"
+                }
+              }
+            },
+            {
+              "type": "tm.Flow",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 195,
+                "y": 255
+              },
+              "angle": 0,
+              "id": "flow-user-cf-req",
+              "z": 8,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "isEncrypted": true,
+              "isPublicNetwork": true,
+              "protocol": "HTTPS",
+              "description": "POST /otp/request ผ่าน Cloudflare Edge",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "POST /otp/request"
+                }
+              },
+              "source": {
+                "id": "actor-user-req"
+              },
+              "target": {
+                "id": "proc-cloudflare-req"
+              }
+            },
+            {
+              "type": "tm.Flow",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 345,
+                "y": 200
+              },
+              "angle": 0,
+              "id": "flow-cf-api-req",
+              "z": 9,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "isEncrypted": true,
+              "isPublicNetwork": false,
+              "protocol": "HTTPS + CF-Connecting-IP",
+              "description": "Cloudflare forward request พร้อม CF-Connecting-IP header ไปยัง NestJS",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "forward + CF headers"
+                }
+              },
+              "source": {
+                "id": "proc-cloudflare-req"
+              },
+              "target": {
+                "id": "proc-api-gateway-req"
+              }
+            },
+            {
+              "type": "tm.Flow",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 445,
+                "y": 215
+              },
+              "angle": 0,
+              "id": "flow-api-service-req",
+              "z": 10,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "Internal",
+              "description": "API Gateway ส่ง validated request ไปยัง OTP Service",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "validated request"
+                }
+              },
+              "source": {
+                "id": "proc-api-gateway-req"
+              },
+              "target": {
+                "id": "proc-otp-service-req"
+              }
+            },
+            {
+              "type": "tm.Flow",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 505,
+                "y": 365
+              },
+              "angle": 0,
+              "id": "flow-service-redis-req",
+              "z": 11,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "Redis Protocol",
+              "description": "บันทึก SHA-256(otp:sessionId) พร้อม TTL",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "save hash + TTL"
+                }
+              },
+              "source": {
+                "id": "proc-otp-service-req"
+              },
+              "target": {
+                "id": "store-redis-req"
+              }
+            },
+            {
+              "type": "tm.Flow",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 630,
+                "y": 210
+              },
+              "angle": 0,
+              "id": "flow-service-sms-req",
+              "z": 12,
+              "hasOpenThreats": true,
+              "outOfScope": false,
+              "isEncrypted": true,
+              "isPublicNetwork": true,
+              "protocol": "HTTPS",
+              "description": "ส่ง OTP ไปยัง SMS Gateway",
+              "threats": [
+                {
+                  "status": "Mitigated",
+                  "severity": "Medium",
+                  "title": "OTP Intercepted in Transit",
+                  "type": "Tampering",
+                  "description": "OTP ถูก intercept ระหว่างส่งจาก OTP Service ไปยัง SMS Gateway",
+                  "mitigation": "ใช้ TLS/HTTPS เสมอสำหรับ API call ไปยัง SMS Gateway"
+                }
+              ],
+              "attrs": {
+                "text": {
+                  "text": "send OTP (HTTPS)"
+                }
+              },
+              "source": {
+                "id": "proc-otp-service-req"
+              },
+              "target": {
+                "id": "actor-sms-req"
+              }
+            },
+            {
+              "type": "tm.Flow",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 840,
+                "y": 185
+              },
+              "angle": 0,
+              "id": "flow-sms-phone-req",
+              "z": 13,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "isEncrypted": false,
+              "isPublicNetwork": true,
+              "protocol": "SMS/Telecom",
+              "description": "SMS Gateway ส่ง OTP ไปยังเบอร์โทรของผู้ใช้",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "SMS Delivery"
+                }
+              },
+              "source": {
+                "id": "actor-sms-req"
+              },
+              "target": {
+                "id": "actor-phone-req"
+              }
+            },
+            {
+              "type": "tm.Boundary",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 195,
+                "y": 40
+              },
+              "angle": 0,
+              "id": "boundary-user-cf",
+              "z": 0,
+              "attrs": {
+                "text": {
+                  "text": "Public Internet"
+                }
+              },
+              "source": {
+                "x": 195,
+                "y": 40
+              },
+              "target": {
+                "x": 195,
+                "y": 470
+              },
+              "vertices": []
+            },
+            {
+              "type": "tm.Boundary",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 370,
+                "y": 40
+              },
+              "angle": 0,
+              "id": "boundary-cf-internal",
+              "z": 0,
+              "attrs": {
+                "text": {
+                  "text": "Cloudflare / Internal"
+                }
+              },
+              "source": {
+                "x": 370,
+                "y": 40
+              },
+              "target": {
+                "x": 370,
+                "y": 470
+              },
+              "vertices": []
+            },
+            {
+              "type": "tm.Boundary",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 730,
+                "y": 40
+              },
+              "angle": 0,
+              "id": "boundary-internal-3rdparty",
+              "z": 0,
+              "attrs": {
+                "text": {
+                  "text": "Internal / 3rd Party"
+                }
+              },
+              "source": {
+                "x": 730,
+                "y": 40
+              },
+              "target": {
+                "x": 730,
+                "y": 470
+              },
+              "vertices": []
+            }
+          ]
+        },
+        "size": {
+          "height": 530,
+          "width": 1000
+        }
+      },
+      {
+        "title": "Diagram 2 — Verify OTP Flow",
+        "thumbnail": "./public/content/images/thumbnail.stride.jpg",
+        "diagramType": "STRIDE",
+        "id": 1,
+        "diagramJson": {
+          "cells": [
+            {
+              "type": "tm.Actor",
+              "size": {
+                "width": 160,
+                "height": 80
+              },
+              "position": {
+                "x": 30,
+                "y": 220
+              },
+              "angle": 0,
+              "id": "actor-user-ver",
+              "z": 1,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "description": "ผู้ใช้ที่ได้รับ OTP SMS แล้วนำมากรอกเพื่อยืนยัน",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "User / Mobile App"
+                }
+              }
+            },
+            {
+              "type": "tm.Process",
+              "size": {
+                "width": 110,
+                "height": 110
+              },
+              "position": {
+                "x": 230,
+                "y": 195
+              },
+              "angle": 0,
+              "id": "proc-cloudflare-ver",
+              "z": 2,
+              "hasOpenThreats": true,
+              "outOfScope": false,
+              "description": "Cloudflare Edge: Rate Limit POST /otp/verify max 5 req/min per IP, WAF, DDoS",
+              "threats": [
+                {
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "title": "Brute Force at Edge",
+                  "type": "Elevation of privilege",
+                  "description": "ผู้โจมตียิง verify request หลาย IP พร้อมกันเพื่อ brute force OTP",
+                  "mitigation": "Cloudflare Rate Limit: POST /otp/verify max 5 req/min per IP. WAF block suspicious patterns"
+                },
+                {
+                  "status": "Mitigated",
+                  "severity": "Medium",
+                  "title": "IP Spoofing via X-Forwarded-For",
+                  "type": "Spoofing",
+                  "description": "ผู้โจมตีปลอม X-Forwarded-For เพื่อ bypass rate limit",
+                  "mitigation": "NestJS อ่าน CF-Connecting-IP header แทน. Whitelist เฉพาะ Cloudflare IP ranges"
+                }
+              ],
+              "attrs": {
+                "text": {
+                  "text": "Cloudflare Edge\n(WAF + Rate Limit)"
+                }
+              }
+            },
+            {
+              "type": "tm.Process",
+              "size": {
+                "width": 110,
+                "height": 110
+              },
+              "position": {
+                "x": 390,
+                "y": 100
+              },
+              "angle": 0,
+              "id": "proc-api-gateway-ver",
+              "z": 3,
+              "hasOpenThreats": true,
+              "outOfScope": false,
+              "description": "NestJS API Gateway: ThrottlerGuard (5 req/min verify), ValidationPipe ตรวจ phone+otp+sessionId format",
+              "threats": [
+                {
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "title": "Brute Force per Phone (Multi-IP)",
+                  "type": "Elevation of privilege",
+                  "description": "โจรใช้หลาย IP bypass Cloudflare rate limit แต่ยัง brute force phone number เดิมได้",
+                  "mitigation": "ThrottlerModule rate limit per phone number ใน NestJS เป็น second layer"
+                },
+                {
+                  "status": "Mitigated",
+                  "severity": "Medium",
+                  "title": "Malformed OTP Input",
+                  "type": "Tampering",
+                  "description": "ส่ง otp ที่ไม่ใช่ตัวเลข 6 หลัก หรือ sessionId ที่ผิดรูปแบบ",
+                  "mitigation": "ValidationPipe + class-validator: @Length(6,6), @Matches(/^\\d{6}$/), @IsUUID()"
+                }
+              ],
+              "attrs": {
+                "text": {
+                  "text": "API Gateway\n(ThrottlerGuard)"
+                }
+              }
+            },
+            {
+              "type": "tm.Process",
+              "size": {
+                "width": 110,
+                "height": 110
+              },
+              "position": {
+                "x": 390,
+                "y": 310
+              },
+              "angle": 0,
+              "id": "proc-otp-service-ver",
+              "z": 4,
+              "hasOpenThreats": true,
+              "outOfScope": false,
+              "description": "OTP Service: ตรวจ lockout, lookup session, timingSafeEqual, one-time delete",
+              "threats": [
+                {
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "title": "Replay Attack",
+                  "type": "Elevation of privilege",
+                  "description": "ผู้โจมตีดัก OTP ที่ถูกต้องแล้วนำกลับมาใช้ซ้ำ",
+                  "mitigation": "OTP ถูก delete ทันทีหลัง verify สำเร็จ (one-time use). TTL 5 นาที. Bind OTP กับ sessionId+phone"
+                },
+                {
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "title": "Timing Attack on OTP Comparison",
+                  "type": "Information disclosure",
+                  "description": "วัดเวลา response ต่างกันระหว่าง OTP ที่ถูก vs ผิด ทำให้รู้ได้ว่า guess ใกล้เคียงแค่ไหน",
+                  "mitigation": "ใช้ timingSafeEqual() จาก Node.js crypto สำหรับ hash comparison เสมอ"
+                },
+                {
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "title": "Progressive Lockout Bypass",
+                  "type": "Elevation of privilege",
+                  "description": "ผู้โจมตีสร้าง session ใหม่ทุกครั้งเพื่อ bypass attempt counter",
+                  "mitigation": "Lockout ผูกกับ phone number ไม่ใช่ session. สร้าง session ใหม่ก็ยัง locked อยู่"
+                },
+                {
+                  "status": "Mitigated",
+                  "severity": "Medium",
+                  "title": "Phone Mismatch Attack",
+                  "type": "Elevation of privilege",
+                  "description": "ผู้โจมตีใช้ sessionId ของคนอื่นแต่ใส่ phone ตัวเอง",
+                  "mitigation": "Verify ตรวจ phone ใน session ต้องตรงกับ phone ที่ส่งมา ถ้าไม่ตรง return generic error"
+                },
+                {
+                  "status": "Mitigated",
+                  "severity": "Medium",
+                  "title": "Information Disclosure via Error Message",
+                  "type": "Information disclosure",
+                  "description": "Error message ต่างกันระหว่าง 'ไม่มี session', 'หมดอายุ', 'OTP ผิด' ทำให้รู้ state ของระบบ",
+                  "mitigation": "คืน generic message 'Invalid or expired OTP' เสมอทุก failure reason"
+                }
+              ],
+              "attrs": {
+                "text": {
+                  "text": "OTP Service\n(Verify Logic)"
+                }
+              }
+            },
+            {
+              "type": "tm.Process",
+              "size": {
+                "width": 110,
+                "height": 110
+              },
+              "position": {
+                "x": 560,
+                "y": 100
+              },
+              "angle": 0,
+              "id": "proc-lockout-ver",
+              "z": 5,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "description": "Progressive Lockout: ติดตาม failed attempts ต่อ phone number. 5 fail=5min, 10 fail=30min, 15 fail=24hr",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "Lockout Manager\n(Progressive)"
+                }
+              }
+            },
+            {
+              "type": "tm.Store",
+              "size": {
+                "width": 160,
+                "height": 80
+              },
+              "position": {
+                "x": 545,
+                "y": 330
+              },
+              "angle": 0,
+              "id": "store-redis-ver",
+              "z": 6,
+              "hasOpenThreats": true,
+              "outOfScope": false,
+              "isALog": false,
+              "storesCredentials": false,
+              "isEncrypted": false,
+              "description": "Redis: lookup hashed OTP, ตรวจ attempts, delete หลัง verify สำเร็จ",
+              "threats": [
+                {
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "title": "Race Condition on Attempt Counter",
+                  "type": "Tampering",
+                  "description": "ยิง verify request พร้อมกันหลาย requests เพื่อ bypass attempt limit",
+                  "mitigation": "Increment attempt counter BEFORE checking (atomic). ใน production ใช้ Redis INCR atomic operation"
+                }
+              ],
+              "attrs": {
+                "text": {
+                  "text": "Redis (OTP Store)\nlookup + delete"
+                }
+              }
+            },
+            {
+              "type": "tm.Store",
+              "size": {
+                "width": 160,
+                "height": 80
+              },
+              "position": {
+                "x": 740,
+                "y": 220
+              },
+              "angle": 0,
+              "id": "store-audit-log",
+              "z": 7,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "isALog": true,
+              "storesCredentials": false,
+              "isEncrypted": false,
+              "description": "Audit Log: บันทึก verify attempts พร้อม timestamp, IP (CF-Connecting-IP), masked phone, success/fail (ไม่ log OTP)",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "Audit Log\n(No OTP Value)"
+                }
+              }
+            },
+            {
+              "type": "tm.Actor",
+              "size": {
+                "width": 160,
+                "height": 80
+              },
+              "position": {
+                "x": 740,
+                "y": 360
+              },
+              "angle": 0,
+              "id": "actor-auth-token",
+              "z": 8,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "description": "Auth Token (JWT/Session) ที่ออกให้เมื่อ verify สำเร็จ",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "Auth Token\n(JWT / Session)"
+                }
+              }
+            },
+            {
+              "type": "tm.Flow",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 195,
+                "y": 255
+              },
+              "angle": 0,
+              "id": "flow-user-cf-ver",
+              "z": 9,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "isEncrypted": true,
+              "isPublicNetwork": true,
+              "protocol": "HTTPS",
+              "description": "POST /otp/verify — ส่ง phone + otp + sessionId",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "POST /otp/verify"
+                }
+              },
+              "source": {
+                "id": "actor-user-ver"
+              },
+              "target": {
+                "id": "proc-cloudflare-ver"
+              }
+            },
+            {
+              "type": "tm.Flow",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 345,
+                "y": 200
+              },
+              "angle": 0,
+              "id": "flow-cf-api-ver",
+              "z": 10,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "isEncrypted": true,
+              "isPublicNetwork": false,
+              "protocol": "HTTPS + CF-Connecting-IP",
+              "description": "Cloudflare forward request พร้อม CF-Connecting-IP header",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "forward + CF headers"
+                }
+              },
+              "source": {
+                "id": "proc-cloudflare-ver"
+              },
+              "target": {
+                "id": "proc-api-gateway-ver"
+              }
+            },
+            {
+              "type": "tm.Flow",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 445,
+                "y": 215
+              },
+              "angle": 0,
+              "id": "flow-api-service-ver",
+              "z": 11,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "Internal",
+              "description": "ส่ง validated phone + otp + sessionId ไปยัง OTP Service",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "validated input"
+                }
+              },
+              "source": {
+                "id": "proc-api-gateway-ver"
+              },
+              "target": {
+                "id": "proc-otp-service-ver"
+              }
+            },
+            {
+              "type": "tm.Flow",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 475,
+                "y": 155
+              },
+              "angle": 0,
+              "id": "flow-service-lockout-ver",
+              "z": 12,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "Internal",
+              "description": "ตรวจ lockout ก่อน verify และ update fail count หลัง verify ผิด",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "check + update lockout"
+                }
+              },
+              "source": {
+                "id": "proc-otp-service-ver"
+              },
+              "target": {
+                "id": "proc-lockout-ver"
+              }
+            },
+            {
+              "type": "tm.Flow",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 475,
+                "y": 370
+              },
+              "angle": 0,
+              "id": "flow-service-redis-ver",
+              "z": 13,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "Redis Protocol",
+              "description": "lookup session, timingSafeEqual, delete on success",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "lookup + delete (one-time)"
+                }
+              },
+              "source": {
+                "id": "proc-otp-service-ver"
+              },
+              "target": {
+                "id": "store-redis-ver"
+              }
+            },
+            {
+              "type": "tm.Flow",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 615,
+                "y": 280
+              },
+              "angle": 0,
+              "id": "flow-service-audit",
+              "z": 14,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "Internal",
+              "description": "บันทึก audit log ทุก attempt ไม่ว่าจะสำเร็จหรือไม่",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "log attempt (no OTP)"
+                }
+              },
+              "source": {
+                "id": "proc-otp-service-ver"
+              },
+              "target": {
+                "id": "store-audit-log"
+              }
+            },
+            {
+              "type": "tm.Flow",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 615,
+                "y": 390
+              },
+              "angle": 0,
+              "id": "flow-service-authtoken",
+              "z": 15,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "Internal",
+              "description": "ออก Auth Token เมื่อ verify สำเร็จเท่านั้น",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "issue token (on success)"
+                }
+              },
+              "source": {
+                "id": "proc-otp-service-ver"
+              },
+              "target": {
+                "id": "actor-auth-token"
+              }
+            },
+            {
+              "type": "tm.Boundary",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 195,
+                "y": 40
+              },
+              "angle": 0,
+              "id": "boundary-ver-user-cf",
+              "z": 0,
+              "attrs": {
+                "text": {
+                  "text": "Public Internet"
+                }
+              },
+              "source": {
+                "x": 195,
+                "y": 40
+              },
+              "target": {
+                "x": 195,
+                "y": 490
+              },
+              "vertices": []
+            },
+            {
+              "type": "tm.Boundary",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 370,
+                "y": 40
+              },
+              "angle": 0,
+              "id": "boundary-ver-cf-internal",
+              "z": 0,
+              "attrs": {
+                "text": {
+                  "text": "Cloudflare / Internal"
+                }
+              },
+              "source": {
+                "x": 370,
+                "y": 40
+              },
+              "target": {
+                "x": 370,
+                "y": 490
+              },
+              "vertices": []
+            },
+            {
+              "type": "tm.Boundary",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 715,
+                "y": 40
+              },
+              "angle": 0,
+              "id": "boundary-ver-internal-output",
+              "z": 0,
+              "attrs": {
+                "text": {
+                  "text": "Internal / Output"
+                }
+              },
+              "source": {
+                "x": 715,
+                "y": 40
+              },
+              "target": {
+                "x": 715,
+                "y": 490
+              },
+              "vertices": []
+            }
+          ]
+        },
+        "size": {
+          "height": 530,
+          "width": 980
+        }
+      }
+    ],
+    "reviewer": "",
+    "threatTop": 20
+  }
+}
