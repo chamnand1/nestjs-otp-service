@@ -1,0 +1,688 @@
+{
+  "version": "2.2.0",
+  "summary": {
+    "title": "OTP Service Threat Model",
+    "owner": "Security Team",
+    "description": "STRIDE Threat Model สำหรับ OTP Service ครอบคลุม Request OTP, Verify OTP, SMS Gateway และ Redis Storage",
+    "id": 0
+  },
+  "detail": {
+    "contributors": [
+      {
+        "name": "Security Architect"
+      }
+    ],
+    "diagrams": [
+      {
+        "id": 0,
+        "title": "OTP Service — STRIDE Data Flow",
+        "diagramType": "STRIDE",
+        "placeholder": "New STRIDE diagram description",
+        "thumbnail": "./public/content/images/thumbnail.stride.jpg",
+        "version": "2.2.0",
+        "cells": [
+          {
+            "type": "tm.Actor",
+            "size": {
+              "width": 112,
+              "height": 60
+            },
+            "position": {
+              "x": 40,
+              "y": 200
+            },
+            "angle": 0,
+            "id": "actor-user",
+            "z": 1,
+            "hasOpenThreats": true,
+            "attrs": {
+              "text": {
+                "text": "User / Mobile App"
+              }
+            },
+            "data": {
+              "type": "tm.Actor",
+              "name": "User / Mobile App",
+              "description": "ผู้ใช้งานที่ขอและยืนยัน OTP ผ่าน mobile หรือ web",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": true,
+              "threats": [
+                {
+                  "id": "threat-s1",
+                  "title": "SIM Swap Attack",
+                  "type": "Spoofing",
+                  "status": "Open",
+                  "severity": "High",
+                  "description": "ผู้โจมตีแจ้งซิมหายและขอซิมใหม่จาก carrier เพื่อรับ OTP SMS แทนเจ้าของบัญชีจริง",
+                  "mitigation": "ตรวจสอบว่าซิมเพิ่งเปลี่ยนใน 72 ชม. หากใช่ให้ block และแจ้ง email เจ้าของบัญชี รองรับ TOTP สำหรับ high-risk action"
+                },
+                {
+                  "id": "threat-s2",
+                  "title": "SMS Bombing — ผู้โจมตีสุ่มเบอร์",
+                  "type": "Denial of service",
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "description": "ผู้โจมตีสุ่มเบอร์โทรศัพท์แล้วยิง OTP request เพื่อ DoS SMS Gateway และ spam เหยื่อ",
+                  "mitigation": "Rate limit 3 req/min และ 10 req/hr ต่อ IP, Dummy session สำหรับเบอร์ที่ไม่ได้ลงทะเบียน, CAPTCHA"
+                }
+              ]
+            }
+          },
+          {
+            "type": "tm.Process",
+            "size": {
+              "width": 120,
+              "height": 60
+            },
+            "position": {
+              "x": 240,
+              "y": 120
+            },
+            "angle": 0,
+            "id": "proc-api-gateway",
+            "z": 2,
+            "hasOpenThreats": true,
+            "attrs": {
+              "text": {
+                "text": "API Gateway\n(ThrottlerGuard)"
+              }
+            },
+            "data": {
+              "type": "tm.Process",
+              "name": "API Gateway (ThrottlerGuard)",
+              "description": "รับ HTTP request, ตรวจ rate limit, validate DTO ด้วย ValidationPipe",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": true,
+              "threats": [
+                {
+                  "id": "threat-d1",
+                  "title": "Request Flood / DoS",
+                  "type": "Denial of service",
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "description": "ผู้โจมตียิง request จำนวนมากเพื่อทำให้ API Gateway ล่ม",
+                  "mitigation": "ThrottlerModule: short 3req/min, long 10req/hr. Helmet headers. CORS จำกัด origin"
+                },
+                {
+                  "id": "threat-i1",
+                  "title": "Stack Trace Leakage",
+                  "type": "Information disclosure",
+                  "status": "Mitigated",
+                  "severity": "Medium",
+                  "description": "Internal error expose stack trace หรือ implementation detail ไปยัง client",
+                  "mitigation": "GlobalExceptionFilter คืน generic error message เสมอ ไม่ expose stack trace"
+                }
+              ]
+            }
+          },
+          {
+            "type": "tm.Process",
+            "size": {
+              "width": 120,
+              "height": 60
+            },
+            "position": {
+              "x": 240,
+              "y": 260
+            },
+            "angle": 0,
+            "id": "proc-otp-service",
+            "z": 3,
+            "hasOpenThreats": true,
+            "attrs": {
+              "text": {
+                "text": "OTP Service\n(Business Logic)"
+              }
+            },
+            "data": {
+              "type": "tm.Process",
+              "name": "OTP Service (Business Logic)",
+              "description": "สร้าง OTP ด้วย CSPRNG, จัดการ lockout, ตรวจ session, เรียก SMS Gateway",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": true,
+              "threats": [
+                {
+                  "id": "threat-e1",
+                  "title": "Replay Attack",
+                  "type": "Elevation of privilege",
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "description": "ผู้โจมตีดัก OTP ที่ถูกต้องแล้วนำกลับมาใช้ซ้ำ",
+                  "mitigation": "OTP ถูก delete ทันทีหลัง verify สำเร็จ (one-time use). TTL 5 นาที. Bind OTP กับ sessionId+phone"
+                },
+                {
+                  "id": "threat-e2",
+                  "title": "Brute Force OTP",
+                  "type": "Elevation of privilege",
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "description": "OTP 6 หลักมี 1,000,000 combinations — โจมตีได้ถ้าไม่มี rate limit",
+                  "mitigation": "Progressive lockout: 5 fail=5min, 10 fail=30min, 15 fail=24hr. Max 5 attempts ต่อ session แล้ว invalidate"
+                },
+                {
+                  "id": "threat-r1",
+                  "title": "Repudiation — ปฏิเสธการขอ OTP",
+                  "type": "Repudiation",
+                  "status": "Mitigated",
+                  "severity": "Medium",
+                  "description": "ผู้ใช้อ้างว่าไม่ได้ขอ OTP หรือไม่ได้ทำธุรกรรม",
+                  "mitigation": "Audit log ทุก request พร้อม timestamp, IP, masked phone number (ไม่ log OTP value)"
+                },
+                {
+                  "id": "threat-i2",
+                  "title": "User Enumeration",
+                  "type": "Information disclosure",
+                  "status": "Mitigated",
+                  "severity": "Medium",
+                  "description": "Response ต่างกันระหว่างเบอร์ที่ลงทะเบียนแล้ว vs ยังไม่ลงทะเบียน ทำให้ enumerate users ได้",
+                  "mitigation": "ตอบ generic message เสมอ 'If this number is registered, OTP has been sent.' คืน dummy sessionId สำหรับเบอร์ที่ไม่มีในระบบ"
+                }
+              ]
+            }
+          },
+          {
+            "type": "tm.Process",
+            "size": {
+              "width": 120,
+              "height": 60
+            },
+            "position": {
+              "x": 460,
+              "y": 120
+            },
+            "angle": 0,
+            "id": "proc-lockout",
+            "z": 4,
+            "hasOpenThreats": false,
+            "attrs": {
+              "text": {
+                "text": "Lockout Manager\n(Progressive)"
+              }
+            },
+            "data": {
+              "type": "tm.Process",
+              "name": "Lockout Manager (Progressive)",
+              "description": "ติดตาม failed attempts ต่อ phone number และ lock account ตาม tier",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "threats": []
+            }
+          },
+          {
+            "type": "tm.Store",
+            "size": {
+              "width": 120,
+              "height": 60
+            },
+            "position": {
+              "x": 460,
+              "y": 260
+            },
+            "angle": 0,
+            "id": "store-redis",
+            "z": 5,
+            "hasOpenThreats": true,
+            "attrs": {
+              "text": {
+                "text": "Redis\n(OTP Store)"
+              }
+            },
+            "data": {
+              "type": "tm.Store",
+              "name": "Redis (OTP Store)",
+              "description": "เก็บ hashed OTP, sessionId, phone, attempt count พร้อม TTL 5 นาที",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "isALog": false,
+              "storesCredentials": false,
+              "isEncrypted": false,
+              "hasOpenThreats": true,
+              "threats": [
+                {
+                  "id": "threat-t1",
+                  "title": "OTP Stored as Plaintext",
+                  "type": "Tampering",
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "description": "หาก OTP ถูกเก็บเป็น plaintext ผู้ที่เข้าถึง Redis ได้จะขโมย OTP ทั้งหมดได้",
+                  "mitigation": "เก็บเฉพาะ SHA-256(otp:sessionId) ไม่เก็บ OTP จริง. TTL auto-expire 300 วินาที"
+                },
+                {
+                  "id": "threat-i3",
+                  "title": "OTP Leaked via Logs",
+                  "type": "Information disclosure",
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "description": "OTP value ปรากฏใน application logs หรือ Redis logs",
+                  "mitigation": "ห้าม log OTP value เด็ดขาด. Mask phone number ใน logs ทุกที่. เก็บเฉพาะ hash"
+                }
+              ]
+            }
+          },
+          {
+            "type": "tm.Actor",
+            "size": {
+              "width": 112,
+              "height": 60
+            },
+            "position": {
+              "x": 660,
+              "y": 120
+            },
+            "angle": 0,
+            "id": "actor-sms-gateway",
+            "z": 6,
+            "hasOpenThreats": true,
+            "attrs": {
+              "text": {
+                "text": "SMS Gateway\n(Twilio/SNS)"
+              }
+            },
+            "data": {
+              "type": "tm.Actor",
+              "name": "SMS Gateway (Twilio/SNS)",
+              "description": "Third-party provider สำหรับส่ง OTP SMS ไปยังผู้ใช้",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": true,
+              "threats": [
+                {
+                  "id": "threat-t2",
+                  "title": "SMS Interception (SS7)",
+                  "type": "Tampering",
+                  "status": "Open",
+                  "severity": "High",
+                  "description": "ผู้โจมตีใช้ช่องโหว่ SS7 protocol ดัก SMS ระหว่างทาง",
+                  "mitigation": "แนะนำให้ใช้ TOTP (Authenticator App) แทน SMS สำหรับ high-value transaction. SMS OTP ยังใช้ได้สำหรับ low-risk"
+                },
+                {
+                  "id": "threat-d2",
+                  "title": "SMS Bombing Cost Attack",
+                  "type": "Denial of service",
+                  "status": "Mitigated",
+                  "severity": "Medium",
+                  "description": "ผู้โจมตีทำให้ค่า SMS พุ่งโดย flood request ไปยัง SMS Gateway",
+                  "mitigation": "Rate limit ก่อนถึง SMS Gateway. Budget cap กับ provider. Dummy session ไม่ส่ง SMS จริง"
+                }
+              ]
+            }
+          },
+          {
+            "type": "tm.Actor",
+            "size": {
+              "width": 112,
+              "height": 60
+            },
+            "position": {
+              "x": 660,
+              "y": 260
+            },
+            "angle": 0,
+            "id": "actor-phone",
+            "z": 7,
+            "hasOpenThreats": false,
+            "attrs": {
+              "text": {
+                "text": "User Phone\n(SMS Recipient)"
+              }
+            },
+            "data": {
+              "type": "tm.Actor",
+              "name": "User Phone (SMS Recipient)",
+              "description": "อุปกรณ์ของผู้ใช้ที่รับ OTP SMS",
+              "outOfScope": true,
+              "reasonOutOfScope": "อยู่นอก control ของระบบ",
+              "hasOpenThreats": false,
+              "threats": []
+            }
+          },
+          {
+            "type": "tm.Flow",
+            "size": {
+              "width": 10,
+              "height": 10
+            },
+            "position": {
+              "x": 160,
+              "y": 200
+            },
+            "angle": 0,
+            "id": "flow-user-to-api-request",
+            "z": 8,
+            "hasOpenThreats": false,
+            "source": {
+              "id": "actor-user"
+            },
+            "target": {
+              "id": "proc-api-gateway"
+            },
+            "vertices": [],
+            "attrs": {
+              "line": {
+                "strokeDasharray": null
+              }
+            },
+            "data": {
+              "type": "tm.Flow",
+              "name": "POST /otp/request",
+              "description": "ผู้ใช้ส่ง phone number เพื่อขอ OTP",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "protocol": "HTTPS",
+              "isEncrypted": true,
+              "isPublicNetwork": true,
+              "hasOpenThreats": false,
+              "threats": []
+            }
+          },
+          {
+            "type": "tm.Flow",
+            "size": {
+              "width": 10,
+              "height": 10
+            },
+            "position": {
+              "x": 160,
+              "y": 260
+            },
+            "angle": 0,
+            "id": "flow-user-to-api-verify",
+            "z": 9,
+            "hasOpenThreats": false,
+            "source": {
+              "id": "actor-user"
+            },
+            "target": {
+              "id": "proc-otp-service"
+            },
+            "vertices": [
+              {
+                "x": 180,
+                "y": 290
+              }
+            ],
+            "attrs": {
+              "line": {
+                "strokeDasharray": "5 5"
+              }
+            },
+            "data": {
+              "type": "tm.Flow",
+              "name": "POST /otp/verify",
+              "description": "ผู้ใช้ส่ง otp + sessionId + phone เพื่อยืนยัน",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "protocol": "HTTPS",
+              "isEncrypted": true,
+              "isPublicNetwork": true,
+              "hasOpenThreats": false,
+              "threats": []
+            }
+          },
+          {
+            "type": "tm.Flow",
+            "size": {
+              "width": 10,
+              "height": 10
+            },
+            "position": {
+              "x": 300,
+              "y": 190
+            },
+            "angle": 0,
+            "id": "flow-api-to-service",
+            "z": 10,
+            "hasOpenThreats": false,
+            "source": {
+              "id": "proc-api-gateway"
+            },
+            "target": {
+              "id": "proc-otp-service"
+            },
+            "vertices": [],
+            "data": {
+              "type": "tm.Flow",
+              "name": "Forward validated request",
+              "description": "API Gateway ส่ง validated request ไปยัง OTP Service",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "protocol": "Internal",
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "hasOpenThreats": false,
+              "threats": []
+            }
+          },
+          {
+            "type": "tm.Flow",
+            "size": {
+              "width": 10,
+              "height": 10
+            },
+            "position": {
+              "x": 380,
+              "y": 180
+            },
+            "angle": 0,
+            "id": "flow-service-to-lockout",
+            "z": 11,
+            "hasOpenThreats": false,
+            "source": {
+              "id": "proc-otp-service"
+            },
+            "target": {
+              "id": "proc-lockout"
+            },
+            "vertices": [],
+            "data": {
+              "type": "tm.Flow",
+              "name": "Check / update lockout",
+              "description": "ตรวจสอบและอัพเดท lockout status ต่อ phone number",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "protocol": "Internal",
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "hasOpenThreats": false,
+              "threats": []
+            }
+          },
+          {
+            "type": "tm.Flow",
+            "size": {
+              "width": 10,
+              "height": 10
+            },
+            "position": {
+              "x": 380,
+              "y": 290
+            },
+            "angle": 0,
+            "id": "flow-service-to-redis",
+            "z": 12,
+            "hasOpenThreats": false,
+            "source": {
+              "id": "proc-otp-service"
+            },
+            "target": {
+              "id": "store-redis"
+            },
+            "vertices": [],
+            "data": {
+              "type": "tm.Flow",
+              "name": "Save / lookup hashed OTP",
+              "description": "บันทึก SHA-256(otp:sessionId) พร้อม TTL หรือ lookup เพื่อ verify",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "protocol": "Redis Protocol",
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "hasOpenThreats": false,
+              "threats": []
+            }
+          },
+          {
+            "type": "tm.Flow",
+            "size": {
+              "width": 10,
+              "height": 10
+            },
+            "position": {
+              "x": 580,
+              "y": 200
+            },
+            "angle": 0,
+            "id": "flow-service-to-sms",
+            "z": 13,
+            "hasOpenThreats": true,
+            "source": {
+              "id": "proc-otp-service"
+            },
+            "target": {
+              "id": "actor-sms-gateway"
+            },
+            "vertices": [],
+            "data": {
+              "type": "tm.Flow",
+              "name": "Send OTP via SMS",
+              "description": "ส่ง OTP plaintext ไปยัง SMS Gateway เพื่อส่งต่อให้ผู้ใช้",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "protocol": "HTTPS",
+              "isEncrypted": true,
+              "isPublicNetwork": true,
+              "hasOpenThreats": true,
+              "threats": [
+                {
+                  "id": "threat-t3",
+                  "title": "OTP ใน Transit ถูกดัก",
+                  "type": "Tampering",
+                  "status": "Mitigated",
+                  "severity": "Medium",
+                  "description": "OTP ถูก intercept ระหว่างส่งจาก OTP Service ไปยัง SMS Gateway",
+                  "mitigation": "ใช้ TLS/HTTPS สำหรับทุก request ไปยัง SMS Gateway"
+                }
+              ]
+            }
+          },
+          {
+            "type": "tm.Flow",
+            "size": {
+              "width": 10,
+              "height": 10
+            },
+            "position": {
+              "x": 720,
+              "y": 200
+            },
+            "angle": 0,
+            "id": "flow-sms-to-phone",
+            "z": 14,
+            "hasOpenThreats": false,
+            "source": {
+              "id": "actor-sms-gateway"
+            },
+            "target": {
+              "id": "actor-phone"
+            },
+            "vertices": [],
+            "data": {
+              "type": "tm.Flow",
+              "name": "SMS Delivery",
+              "description": "SMS Gateway ส่ง OTP ไปยังเบอร์โทรของผู้ใช้ผ่าน telecom network",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "protocol": "SMS/Telecom",
+              "isEncrypted": false,
+              "isPublicNetwork": true,
+              "hasOpenThreats": false,
+              "threats": []
+            }
+          },
+          {
+            "type": "tm.Boundary",
+            "size": {
+              "width": 10,
+              "height": 10
+            },
+            "position": {
+              "x": 200,
+              "y": 80
+            },
+            "angle": 0,
+            "id": "boundary-internet",
+            "z": 0,
+            "attrs": {
+              "line": {
+                "strokeDasharray": "8 4"
+              }
+            },
+            "vertices": [
+              {
+                "x": 200,
+                "y": 380
+              }
+            ],
+            "source": {
+              "x": 200,
+              "y": 80
+            },
+            "target": {
+              "x": 200,
+              "y": 380
+            },
+            "data": {
+              "type": "tm.Boundary",
+              "name": "Internet / Internal Boundary",
+              "description": "Trust boundary ระหว่าง public internet และ internal service zone"
+            }
+          },
+          {
+            "type": "tm.Boundary",
+            "size": {
+              "width": 10,
+              "height": 10
+            },
+            "position": {
+              "x": 620,
+              "y": 80
+            },
+            "angle": 0,
+            "id": "boundary-external",
+            "z": 0,
+            "attrs": {
+              "line": {
+                "strokeDasharray": "8 4"
+              }
+            },
+            "vertices": [
+              {
+                "x": 620,
+                "y": 380
+              }
+            ],
+            "source": {
+              "x": 620,
+              "y": 80
+            },
+            "target": {
+              "x": 620,
+              "y": 380
+            },
+            "data": {
+              "type": "tm.Boundary",
+              "name": "Internal / External Provider Boundary",
+              "description": "Trust boundary ระหว่าง internal service และ third-party SMS provider"
+            }
+          }
+        ]
+      }
+    ],
+    "reviewer": "",
+    "threatTop": 14
+  }
+}
