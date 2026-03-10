@@ -1,9 +1,8 @@
 {
-  "version": "2.6.0",
   "summary": {
     "title": "OTP Service Threat Model",
     "owner": "Security Team",
-    "description": "STRIDE Threat Model สำหรับ OTP Service — Request + Verify OTP พร้อม Cloudflare Edge",
+    "description": "STRIDE Threat Model สำหรับ OTP Service — Request OTP, Verify OTP, SMS Gateway, Redis Storage, Cloudflare Edge",
     "id": 0
   },
   "detail": {
@@ -14,1929 +13,1177 @@
     ],
     "diagrams": [
       {
-        "id": 0,
-        "title": "OTP Service — Full Flow (Request + Verify)",
-        "diagramType": "STRIDE",
-        "placeholder": "OTP Service STRIDE diagram",
+        "title": "Diagram 1 — Request OTP Flow",
         "thumbnail": "./public/content/images/thumbnail.stride.jpg",
-        "version": "2.6.0",
-        "cells": [
-          {
-            "position": {
-              "x": 30,
-              "y": 290
-            },
-            "size": {
-              "width": 130,
-              "height": 80
-            },
-            "attrs": {
-              "body": {
-                "stroke": "#333333",
-                "strokeWidth": 1.5,
-                "strokeDasharray": null
-              }
-            },
-            "visible": true,
-            "shape": "actor",
-            "ports": {
-              "groups": {
-                "top": {
-                  "position": "top",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "right": {
-                  "position": "right",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "bottom": {
-                  "position": "bottom",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "left": {
-                  "position": "left",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                }
-              },
-              "items": [
-                {
-                  "group": "top",
-                  "id": "78799222-239f-474e-af53-f6c1863d8f27"
-                },
-                {
-                  "group": "right",
-                  "id": "1699d1fa-62bb-4fb3-873e-e1d29d9f69b2"
-                },
-                {
-                  "group": "bottom",
-                  "id": "4ae7a0ca-e604-4368-830c-b1d7078da368"
-                },
-                {
-                  "group": "left",
-                  "id": "38512771-7fc7-4a54-8261-a4ee67705f3b"
-                }
-              ]
-            },
-            "id": "a4c5f87d-44bd-4b49-a8f7-cf782fae377c",
-            "zIndex": 1,
-            "data": {
+        "diagramType": "STRIDE",
+        "id": 0,
+        "diagramJson": {
+          "cells": [
+            {
               "type": "tm.Actor",
-              "name": "User / Mobile App",
-              "description": "ผู้ใช้งานที่ขอและยืนยัน OTP ผ่าน mobile หรือ web",
-              "isTrustBoundary": false,
-              "outOfScope": false,
-              "reasonOutOfScope": "",
+              "size": {
+                "width": 160,
+                "height": 80
+              },
+              "position": {
+                "x": 30,
+                "y": 220
+              },
+              "angle": 0,
+              "id": "actor-user-req",
+              "z": 1,
               "hasOpenThreats": true,
-              "providesAuthentication": false,
+              "outOfScope": false,
+              "description": "ผู้ใช้งานที่ขอ OTP ผ่าน mobile หรือ web",
               "threats": [
                 {
-                  "id": "e2a65a8b-7208-466f-8f7c-d90259b1520e",
+                  "status": "Open",
+                  "severity": "High",
                   "title": "SIM Swap Attack",
                   "type": "Spoofing",
-                  "severity": "High",
-                  "status": "Open",
-                  "description": "ผู้โจมตีแจ้งซิมหายขอซิมใหม่จาก carrier เพื่อรับ OTP SMS แทนเจ้าของบัญชีจริง",
-                  "mitigation": "ตรวจสอบว่าซิมเพิ่งเปลี่ยนใน 72 ชม. block และแจ้ง email เจ้าของบัญชี รองรับ TOTP สำหรับ high-risk action"
+                  "description": "ผู้โจมตีแจ้งซิมหายและขอซิมใหม่จาก carrier เพื่อรับ OTP SMS แทนเจ้าของบัญชีจริง",
+                  "mitigation": "ตรวจสอบว่าซิมเพิ่งเปลี่ยนใน 72 ชม. ให้ block และแจ้ง email เจ้าของบัญชี รองรับ TOTP สำหรับ high-risk action"
                 },
                 {
-                  "id": "5b61a9fb-414b-4a29-9de2-45a178e0682f",
-                  "title": "SMS Bombing",
-                  "type": "Denial of service",
-                  "severity": "High",
                   "status": "Mitigated",
-                  "description": "ผู้โจมตีสุ่มเบอร์ยิง OTP request เพื่อ DoS SMS Gateway และ spam เหยื่อ",
+                  "severity": "High",
+                  "title": "SMS Bombing — สุ่มเบอร์",
+                  "type": "Denial of service",
+                  "description": "ผู้โจมตีสุ่มเบอร์แล้วยิง OTP request เพื่อ DoS SMS Gateway และ spam เหยื่อ",
                   "mitigation": "Cloudflare Rate Limit + Turnstile กัน bot. Dummy session สำหรับเบอร์ที่ไม่ได้ลงทะเบียน"
                 }
-              ]
-            }
-          },
-          {
-            "position": {
-              "x": 210,
-              "y": 270
-            },
-            "size": {
-              "width": 130,
-              "height": 120
-            },
-            "attrs": {
-              "body": {
-                "stroke": "#333333",
-                "strokeWidth": 1.5,
-                "strokeDasharray": null
+              ],
+              "attrs": {
+                "text": {
+                  "text": "User / Mobile App"
+                }
               }
             },
-            "visible": true,
-            "shape": "process",
-            "ports": {
-              "groups": {
-                "top": {
-                  "position": "top",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "right": {
-                  "position": "right",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "bottom": {
-                  "position": "bottom",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "left": {
-                  "position": "left",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                }
-              },
-              "items": [
-                {
-                  "group": "top",
-                  "id": "b19aef3d-3098-4ce4-bc00-58cc88d87c1e"
-                },
-                {
-                  "group": "right",
-                  "id": "63a616ce-fb55-4c30-a9d5-85ecd6b800ac"
-                },
-                {
-                  "group": "bottom",
-                  "id": "33e01c19-3d9a-46b7-bb42-10f2ab51dd44"
-                },
-                {
-                  "group": "left",
-                  "id": "1285f363-51fe-4aae-890b-9a1f0d83f31e"
-                }
-              ]
-            },
-            "id": "5f7c3e87-b98c-484c-ba7d-8b1d5f71150c",
-            "zIndex": 2,
-            "data": {
+            {
               "type": "tm.Process",
-              "name": "Cloudflare Edge\n(WAF + Rate Limit + Turnstile)",
-              "description": "Rate Limit: /request 3/min, /verify 5/min per IP. WAF, DDoS L3/L4/L7, Turnstile bot protection",
+              "size": {
+                "width": 110,
+                "height": 110
+              },
+              "position": {
+                "x": 230,
+                "y": 195
+              },
+              "angle": 0,
+              "id": "proc-cloudflare-req",
+              "z": 2,
+              "hasOpenThreats": true,
               "outOfScope": false,
-              "isTrustBoundary": false,
-              "reasonOutOfScope": "",
-              "hasOpenThreats": false,
-              "handlesCardPayment": false,
-              "handlesGoodsOrServices": false,
-              "isWebApplication": false,
-              "privilegeLevel": "",
+              "description": "Cloudflare Edge: Rate Limiting, WAF, DDoS Protection, Turnstile bot protection, CF-Connecting-IP header",
               "threats": [
                 {
-                  "id": "b2628c75-2089-4f71-a001-14336e05eb5f",
+                  "status": "Mitigated",
+                  "severity": "High",
                   "title": "DDoS / Request Flood",
                   "type": "Denial of service",
-                  "severity": "High",
-                  "status": "Mitigated",
                   "description": "ผู้โจมตียิง request จำนวนมากเพื่อทำให้ระบบล่ม",
-                  "mitigation": "Cloudflare DDoS Protection L3/L4/L7 อัตโนมัติ. Rate Limit /request 3/min /verify 5/min per IP"
+                  "mitigation": "Cloudflare DDoS Protection L3/L4/L7 อัตโนมัติ. Rate Limit: POST /otp/request max 3 req/min per IP"
                 },
                 {
-                  "id": "8848647c-638c-469f-bb10-c389c054b73f",
+                  "status": "Mitigated",
+                  "severity": "High",
                   "title": "Bot / Scripted Attack",
                   "type": "Denial of service",
-                  "severity": "High",
-                  "status": "Mitigated",
-                  "description": "Bot ยิง request อัตโนมัติเพื่อ SMS bomb หรือ brute force",
-                  "mitigation": "Cloudflare Turnstile CAPTCHA-less bot detection บน /request endpoint"
+                  "description": "Bot ยิง OTP request อัตโนมัติเพื่อ spam หรือ enumerate users",
+                  "mitigation": "Cloudflare Turnstile (CAPTCHA-less bot detection) ก่อน submit request"
                 },
                 {
-                  "id": "88c8fcca-0ceb-492e-879c-fa59cc9a7c21",
+                  "status": "Mitigated",
+                  "severity": "Medium",
                   "title": "IP Spoofing via X-Forwarded-For",
                   "type": "Spoofing",
-                  "severity": "Medium",
-                  "status": "Mitigated",
                   "description": "ผู้โจมตีปลอม X-Forwarded-For header เพื่อ bypass rate limit",
-                  "mitigation": "NestJS อ่าน CF-Connecting-IP แทน. Whitelist เฉพาะ Cloudflare IP ranges ใน firewall"
+                  "mitigation": "NestJS อ่าน CF-Connecting-IP header แทน. Whitelist เฉพาะ Cloudflare IP ranges ใน firewall"
                 }
-              ]
-            }
-          },
-          {
-            "position": {
-              "x": 390,
-              "y": 270
-            },
-            "size": {
-              "width": 130,
-              "height": 120
-            },
-            "attrs": {
-              "body": {
-                "stroke": "#333333",
-                "strokeWidth": 1.5,
-                "strokeDasharray": null
+              ],
+              "attrs": {
+                "text": {
+                  "text": "Cloudflare Edge\n(WAF + Rate Limit)"
+                }
               }
             },
-            "visible": true,
-            "shape": "process",
-            "ports": {
-              "groups": {
-                "top": {
-                  "position": "top",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "right": {
-                  "position": "right",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "bottom": {
-                  "position": "bottom",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "left": {
-                  "position": "left",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                }
-              },
-              "items": [
-                {
-                  "group": "top",
-                  "id": "c9165d5a-7a09-4f50-9f81-51ddf1398e9d"
-                },
-                {
-                  "group": "right",
-                  "id": "10d87556-fe24-4c93-a3d6-1686e1791609"
-                },
-                {
-                  "group": "bottom",
-                  "id": "5fcfc5a3-29b0-4245-b5c7-cf45de233f85"
-                },
-                {
-                  "group": "left",
-                  "id": "b8a04675-5859-4658-9b22-36ac05aa189c"
-                }
-              ]
-            },
-            "id": "e4847dd5-8bf7-4f41-8da2-7e52500669d0",
-            "zIndex": 3,
-            "data": {
+            {
               "type": "tm.Process",
-              "name": "API Gateway\n(ThrottlerGuard + ValidationPipe)",
-              "description": "NestJS: ThrottlerGuard per phone, ValidationPipe, Helmet, CORS whitelist",
+              "size": {
+                "width": 110,
+                "height": 110
+              },
+              "position": {
+                "x": 390,
+                "y": 100
+              },
+              "angle": 0,
+              "id": "proc-api-gateway-req",
+              "z": 3,
+              "hasOpenThreats": true,
               "outOfScope": false,
-              "isTrustBoundary": false,
-              "reasonOutOfScope": "",
-              "hasOpenThreats": false,
-              "handlesCardPayment": false,
-              "handlesGoodsOrServices": false,
-              "isWebApplication": false,
-              "privilegeLevel": "",
+              "description": "NestJS API Gateway: ThrottlerGuard (per phone), ValidationPipe, Helmet headers, CORS",
               "threats": [
                 {
-                  "id": "cbd7b372-92b4-40da-9501-efbea4401053",
-                  "title": "Rate Limit Bypass per Phone (Multi-IP)",
-                  "type": "Denial of service",
-                  "severity": "High",
                   "status": "Mitigated",
-                  "description": "โจรใช้หลาย IP bypass Cloudflare แต่ยัง flood phone number เดิมได้",
+                  "severity": "High",
+                  "title": "Rate Limit Bypass (per phone)",
+                  "type": "Denial of service",
+                  "description": "Cloudflare rate limit ต่อ IP แต่โจรใช้หลาย IP ยัง flood ต่อ phone number เดิมได้",
                   "mitigation": "ThrottlerModule rate limit per phone number ใน NestJS เป็น second layer"
                 },
                 {
-                  "id": "e66e59d9-5e85-45c7-a0ca-b426172c585d",
-                  "title": "Malformed Input",
-                  "type": "Tampering",
-                  "severity": "Medium",
                   "status": "Mitigated",
-                  "description": "ส่ง OTP ไม่ใช่ตัวเลข 6 หลัก หรือ phone/sessionId ผิดรูปแบบ",
-                  "mitigation": "ValidationPipe + class-validator @IsPhoneNumber @Length(6,6) @Matches @IsUUID"
-                },
-                {
-                  "id": "964b9fe2-2b12-4609-b4fb-6d3eb0a615fd",
+                  "severity": "Medium",
                   "title": "Stack Trace Leakage",
                   "type": "Information disclosure",
-                  "severity": "Medium",
-                  "status": "Mitigated",
                   "description": "Internal error expose stack trace ไปยัง client",
                   "mitigation": "GlobalExceptionFilter คืน generic error message เสมอ"
                 }
-              ]
-            }
-          },
-          {
-            "position": {
-              "x": 570,
-              "y": 140
-            },
-            "size": {
-              "width": 130,
-              "height": 120
-            },
-            "attrs": {
-              "body": {
-                "stroke": "#333333",
-                "strokeWidth": 1.5,
-                "strokeDasharray": null
+              ],
+              "attrs": {
+                "text": {
+                  "text": "API Gateway\n(ThrottlerGuard)"
+                }
               }
             },
-            "visible": true,
-            "shape": "process",
-            "ports": {
-              "groups": {
-                "top": {
-                  "position": "top",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "right": {
-                  "position": "right",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "bottom": {
-                  "position": "bottom",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "left": {
-                  "position": "left",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                }
-              },
-              "items": [
-                {
-                  "group": "top",
-                  "id": "c8125d55-5201-4345-aecc-1883f43eaf99"
-                },
-                {
-                  "group": "right",
-                  "id": "2b7da6a1-d449-4a31-a1e8-04948f547c1c"
-                },
-                {
-                  "group": "bottom",
-                  "id": "9c32e9ec-744a-4949-a581-672eb1a44653"
-                },
-                {
-                  "group": "left",
-                  "id": "f559deeb-4c2a-4310-aa3f-cd863a4f44be"
-                }
-              ]
-            },
-            "id": "42f86d46-68a0-425b-938c-f73dfb030f6e",
-            "zIndex": 4,
-            "data": {
+            {
               "type": "tm.Process",
-              "name": "OTP Service\n(Request + Verify Logic)",
-              "description": "Request: CSPRNG OTP, dummy session, SMS trigger. Verify: lockout check, timingSafeEqual, one-time delete",
+              "size": {
+                "width": 110,
+                "height": 110
+              },
+              "position": {
+                "x": 390,
+                "y": 310
+              },
+              "angle": 0,
+              "id": "proc-otp-service-req",
+              "z": 4,
+              "hasOpenThreats": true,
               "outOfScope": false,
-              "isTrustBoundary": false,
-              "reasonOutOfScope": "",
-              "hasOpenThreats": false,
-              "handlesCardPayment": false,
-              "handlesGoodsOrServices": false,
-              "isWebApplication": false,
-              "privilegeLevel": "",
+              "description": "OTP Service: สร้าง OTP ด้วย CSPRNG, จัดการ progressive lockout, เรียก SMS Gateway",
               "threats": [
                 {
-                  "id": "c8d55fd3-3094-4b2a-bb87-4649d5f198d6",
-                  "title": "Replay Attack",
-                  "type": "Elevation of privilege",
-                  "severity": "High",
                   "status": "Mitigated",
-                  "description": "ผู้โจมตีดัก OTP ที่ถูกต้องแล้วนำกลับมาใช้ซ้ำ",
-                  "mitigation": "OTP delete ทันทีหลัง verify สำเร็จ (one-time use). TTL 5 นาที. Bind OTP กับ sessionId+phone"
-                },
-                {
-                  "id": "017acf71-d30d-4945-8288-103f856d54ff",
-                  "title": "Brute Force OTP",
-                  "type": "Elevation of privilege",
-                  "severity": "High",
-                  "status": "Mitigated",
-                  "description": "OTP 6 หลัก 1,000,000 combinations โจมตีได้ถ้าไม่มี attempt limit",
-                  "mitigation": "Progressive lockout: 5 fail=5min, 10 fail=30min, 15 fail=24hr"
-                },
-                {
-                  "id": "b0ea1185-b4ee-4e0c-a7d6-fc42bff499eb",
-                  "title": "Timing Attack on OTP Comparison",
-                  "type": "Information disclosure",
-                  "severity": "High",
-                  "status": "Mitigated",
-                  "description": "วัดเวลา response เพื่อรู้ว่า OTP ที่ guess ใกล้เคียงแค่ไหน",
-                  "mitigation": "ใช้ timingSafeEqual() จาก Node.js crypto เสมอ"
-                },
-                {
-                  "id": "ba9b312c-42a1-450a-bae8-6a053c5a3ba6",
-                  "title": "Progressive Lockout Bypass",
-                  "type": "Elevation of privilege",
-                  "severity": "High",
-                  "status": "Mitigated",
-                  "description": "ผู้โจมตีสร้าง session ใหม่ทุกครั้งเพื่อ bypass attempt counter",
-                  "mitigation": "Lockout ผูกกับ phone number ไม่ใช่ session ID"
-                },
-                {
-                  "id": "6e568475-15e3-41d2-9763-e257ff4c1d9c",
+                  "severity": "Medium",
                   "title": "User Enumeration",
                   "type": "Information disclosure",
-                  "severity": "Medium",
-                  "status": "Mitigated",
-                  "description": "Response ต่างกันระหว่างเบอร์ที่ลงทะเบียน vs ไม่ได้ลงทะเบียน",
-                  "mitigation": "Generic message + dummy sessionId + simulateSmsDelay() สำหรับเบอร์ที่ไม่มีในระบบ"
+                  "description": "Response ต่างกันระหว่างเบอร์ที่ลงทะเบียน vs ไม่ได้ลงทะเบียน ทำให้ enumerate users ได้",
+                  "mitigation": "ตอบ generic message เสมอ. คืน dummy sessionId พร้อม simulateSmsDelay() สำหรับเบอร์ที่ไม่มีในระบบ"
                 },
                 {
-                  "id": "cc085c9e-f666-4e7f-a0e1-5e1f92ef478a",
-                  "title": "Phone Mismatch Attack",
-                  "type": "Elevation of privilege",
-                  "severity": "Medium",
                   "status": "Mitigated",
-                  "description": "ผู้โจมตีใช้ sessionId ของคนอื่นแต่ใส่ phone ตัวเอง",
-                  "mitigation": "Verify ตรวจ phone ใน session ต้องตรงกับ phone ที่ส่งมา ถ้าไม่ตรง return generic error"
-                },
-                {
-                  "id": "f38fbca5-951d-4de4-afa3-83eda2b29f65",
-                  "title": "Error Message Info Disclosure",
-                  "type": "Information disclosure",
                   "severity": "Medium",
-                  "status": "Mitigated",
-                  "description": "Error message บอก reason ต่างกัน ทำให้รู้ state ของระบบ",
-                  "mitigation": "คืน Invalid or expired OTP เสมอทุก failure reason"
-                },
-                {
-                  "id": "f60f1531-a020-4c6f-9fa7-8459d217343b",
-                  "title": "Repudiation",
+                  "title": "Repudiation — ปฏิเสธการขอ OTP",
                   "type": "Repudiation",
-                  "severity": "Medium",
-                  "status": "Mitigated",
-                  "description": "ผู้ใช้อ้างว่าไม่ได้ขอ OTP หรือไม่ได้ทำธุรกรรม",
-                  "mitigation": "Audit log ทุก request+verify พร้อม timestamp, CF-Connecting-IP, masked phone ไม่ log OTP"
+                  "description": "ผู้ใช้อ้างว่าไม่ได้ขอ OTP",
+                  "mitigation": "Audit log ทุก request พร้อม timestamp, IP จาก CF-Connecting-IP, masked phone (ไม่ log OTP value)"
                 }
-              ]
-            }
-          },
-          {
-            "position": {
-              "x": 570,
-              "y": 430
-            },
-            "size": {
-              "width": 130,
-              "height": 100
-            },
-            "attrs": {
-              "body": {
-                "stroke": "#333333",
-                "strokeWidth": 1.5,
-                "strokeDasharray": null
+              ],
+              "attrs": {
+                "text": {
+                  "text": "OTP Service\n(Business Logic)"
+                }
               }
             },
-            "visible": true,
-            "shape": "process",
-            "ports": {
-              "groups": {
-                "top": {
-                  "position": "top",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "right": {
-                  "position": "right",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "bottom": {
-                  "position": "bottom",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "left": {
-                  "position": "left",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                }
-              },
-              "items": [
-                {
-                  "group": "top",
-                  "id": "12967e18-c80a-41ee-a821-5d4dc6049e25"
-                },
-                {
-                  "group": "right",
-                  "id": "b43c1638-b434-489e-88a4-b73f02a3168f"
-                },
-                {
-                  "group": "bottom",
-                  "id": "837159c5-9295-4b17-bf1b-6e440fd3d4e5"
-                },
-                {
-                  "group": "left",
-                  "id": "41ad5242-52e7-4023-8185-0f4475482e6c"
-                }
-              ]
-            },
-            "id": "94577c45-e037-4875-b5b4-91f0af08769f",
-            "zIndex": 5,
-            "data": {
-              "type": "tm.Process",
-              "name": "Lockout Manager\n(per phone 5/30/1440 min)",
-              "description": "ติดตาม failed attempts ต่อ phone. 5 fail=5min, 10 fail=30min, 15 fail=24hr. Reset on success.",
-              "outOfScope": false,
-              "isTrustBoundary": false,
-              "reasonOutOfScope": "",
-              "hasOpenThreats": false,
-              "handlesCardPayment": false,
-              "handlesGoodsOrServices": false,
-              "isWebApplication": false,
-              "privilegeLevel": "",
-              "threats": []
-            }
-          },
-          {
-            "position": {
-              "x": 760,
-              "y": 140
-            },
-            "size": {
-              "width": 150,
-              "height": 80
-            },
-            "attrs": {
-              "topLine": {
-                "strokeWidth": 1.5,
-                "strokeDasharray": null
-              },
-              "bottomLine": {
-                "strokeWidth": 1.5,
-                "strokeDasharray": null
-              }
-            },
-            "visible": true,
-            "shape": "store",
-            "ports": {
-              "groups": {
-                "top": {
-                  "position": "top",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "right": {
-                  "position": "right",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "bottom": {
-                  "position": "bottom",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "left": {
-                  "position": "left",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                }
-              },
-              "items": [
-                {
-                  "group": "top",
-                  "id": "745bd385-1611-424b-a90d-c0b31e295590"
-                },
-                {
-                  "group": "right",
-                  "id": "41f6da88-cd5d-4609-9a20-177d9442aeaf"
-                },
-                {
-                  "group": "bottom",
-                  "id": "8a28cc76-a93f-4131-9655-448482aa8c58"
-                },
-                {
-                  "group": "left",
-                  "id": "0222574c-9321-4a10-a3d2-c54bb670e448"
-                }
-              ]
-            },
-            "id": "93d83a5f-46a8-4e54-96dc-1f4771f021a3",
-            "zIndex": 6,
-            "data": {
+            {
               "type": "tm.Store",
-              "name": "Redis (OTP Store)\nTTL 5min | SHA-256",
-              "description": "เก็บ SHA-256(otp:sessionId), phone, attempt count, TTL 5 นาที. Delete on verify success.",
+              "size": {
+                "width": 160,
+                "height": 80
+              },
+              "position": {
+                "x": 570,
+                "y": 330
+              },
+              "angle": 0,
+              "id": "store-redis-req",
+              "z": 5,
+              "hasOpenThreats": true,
               "outOfScope": false,
-              "isTrustBoundary": false,
-              "reasonOutOfScope": "",
-              "hasOpenThreats": false,
               "isALog": false,
-              "isEncrypted": false,
-              "isSigned": false,
               "storesCredentials": false,
-              "storesInventory": false,
+              "isEncrypted": false,
+              "description": "Redis: เก็บ hashed OTP พร้อม TTL 5 นาที ไม่เก็บ OTP plaintext",
               "threats": [
                 {
-                  "id": "f1085569-ad70-48f3-9e1c-2f66af53cb3f",
+                  "status": "Mitigated",
+                  "severity": "High",
                   "title": "OTP Stored as Plaintext",
                   "type": "Tampering",
-                  "severity": "High",
-                  "status": "Mitigated",
-                  "description": "หาก OTP เก็บเป็น plaintext ผู้เข้าถึง Redis จะขโมย OTP ได้ทั้งหมด",
-                  "mitigation": "เก็บเฉพาะ SHA-256(otp:sessionId) TTL auto-expire 300 วินาที"
+                  "description": "หาก OTP ถูกเก็บเป็น plaintext ผู้ที่เข้าถึง Redis ได้จะขโมย OTP ทั้งหมดได้",
+                  "mitigation": "เก็บเฉพาะ SHA-256(otp:sessionId). TTL auto-expire 300 วินาที"
                 },
                 {
-                  "id": "8e1489f8-b998-4ee0-8d1d-eb984c835b34",
+                  "status": "Mitigated",
+                  "severity": "High",
                   "title": "OTP Leaked via Logs",
                   "type": "Information disclosure",
-                  "severity": "High",
-                  "status": "Mitigated",
                   "description": "OTP value ปรากฏใน application logs หรือ Redis logs",
                   "mitigation": "ห้าม log OTP value. Mask phone number ใน logs ทุกที่"
-                },
-                {
-                  "id": "5b989f12-4cf1-472e-9028-0ebce5c82c16",
-                  "title": "Race Condition on Attempt Counter",
-                  "type": "Tampering",
-                  "severity": "High",
-                  "status": "Mitigated",
-                  "description": "ยิง verify พร้อมกันหลาย requests เพื่อ bypass attempt limit",
-                  "mitigation": "ใช้ Redis INCR atomic operation. Increment BEFORE checking"
                 }
-              ]
-            }
-          },
-          {
-            "position": {
-              "x": 760,
-              "y": 400
-            },
-            "size": {
-              "width": 150,
-              "height": 80
-            },
-            "attrs": {
-              "topLine": {
-                "strokeWidth": 1.5,
-                "strokeDasharray": null
-              },
-              "bottomLine": {
-                "strokeWidth": 1.5,
-                "strokeDasharray": null
+              ],
+              "attrs": {
+                "text": {
+                  "text": "Redis (OTP Store)\nTTL 5min | SHA-256"
+                }
               }
             },
-            "visible": true,
-            "shape": "store",
-            "ports": {
-              "groups": {
-                "top": {
-                  "position": "top",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "right": {
-                  "position": "right",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "bottom": {
-                  "position": "bottom",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "left": {
-                  "position": "left",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                }
-              },
-              "items": [
-                {
-                  "group": "top",
-                  "id": "19bfe4ba-6f33-4af1-b906-53be776e1c18"
-                },
-                {
-                  "group": "right",
-                  "id": "01cde7cf-069e-4ecc-adb3-4ae7a3b8713d"
-                },
-                {
-                  "group": "bottom",
-                  "id": "a62a809a-e82b-4b46-a981-a026005007a2"
-                },
-                {
-                  "group": "left",
-                  "id": "1efa1e21-0bc8-4720-80a3-4d0db644952d"
-                }
-              ]
-            },
-            "id": "5f539ce7-b558-45e5-924e-562026b64710",
-            "zIndex": 7,
-            "data": {
-              "type": "tm.Store",
-              "name": "Audit Log\n(No OTP Value)",
-              "description": "บันทึก request+verify attempt: timestamp, CF-Connecting-IP, masked phone, success/fail ไม่มี OTP value",
-              "outOfScope": false,
-              "isTrustBoundary": false,
-              "reasonOutOfScope": "",
-              "hasOpenThreats": false,
-              "isALog": true,
-              "isEncrypted": false,
-              "isSigned": false,
-              "storesCredentials": false,
-              "storesInventory": false,
-              "threats": []
-            }
-          },
-          {
-            "position": {
-              "x": 570,
-              "y": 20
-            },
-            "size": {
-              "width": 130,
-              "height": 80
-            },
-            "attrs": {
-              "body": {
-                "stroke": "#333333",
-                "strokeWidth": 1.5,
-                "strokeDasharray": null
-              }
-            },
-            "visible": true,
-            "shape": "actor",
-            "ports": {
-              "groups": {
-                "top": {
-                  "position": "top",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "right": {
-                  "position": "right",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "bottom": {
-                  "position": "bottom",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "left": {
-                  "position": "left",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                }
-              },
-              "items": [
-                {
-                  "group": "top",
-                  "id": "5c983f2d-fd22-43e4-b202-735795a0c971"
-                },
-                {
-                  "group": "right",
-                  "id": "0a9f2211-54cc-4ace-9b74-28497536bed5"
-                },
-                {
-                  "group": "bottom",
-                  "id": "d913fac5-934b-417d-ba58-c4587d4fa4d7"
-                },
-                {
-                  "group": "left",
-                  "id": "62423286-62ab-4f93-83a6-649976f6f170"
-                }
-              ]
-            },
-            "id": "509ff299-24cc-4188-991c-9912ca2c5932",
-            "zIndex": 8,
-            "data": {
+            {
               "type": "tm.Actor",
-              "name": "SMS Gateway\n(Twilio / AWS SNS)",
-              "description": "Third-party SMS provider ส่ง OTP ไปยังผู้ใช้",
-              "isTrustBoundary": false,
-              "outOfScope": false,
-              "reasonOutOfScope": "",
+              "size": {
+                "width": 160,
+                "height": 80
+              },
+              "position": {
+                "x": 760,
+                "y": 100
+              },
+              "angle": 0,
+              "id": "actor-sms-req",
+              "z": 6,
               "hasOpenThreats": true,
-              "providesAuthentication": false,
+              "outOfScope": false,
+              "description": "Third-party SMS provider เช่น Twilio หรือ AWS SNS",
               "threats": [
                 {
-                  "id": "e1d225e3-f455-4145-a5d2-ac736923cc5f",
+                  "status": "Open",
+                  "severity": "High",
                   "title": "SMS Interception (SS7)",
                   "type": "Tampering",
-                  "severity": "High",
-                  "status": "Open",
-                  "description": "ผู้โจมตีใช้ช่องโหว่ SS7 ดัก SMS ระหว่างทาง",
-                  "mitigation": "แนะนำให้ใช้ TOTP Authenticator App แทน SMS สำหรับ high-value transaction"
+                  "description": "ผู้โจมตีใช้ช่องโหว่ SS7 protocol ดัก SMS ระหว่างทาง",
+                  "mitigation": "แนะนำให้ใช้ TOTP (Authenticator App) แทน SMS สำหรับ high-value transaction"
                 },
                 {
-                  "id": "0955bc9b-62d9-45dd-87ae-c9adfad35e49",
+                  "status": "Mitigated",
+                  "severity": "Medium",
                   "title": "SMS Cost Attack",
                   "type": "Denial of service",
-                  "severity": "Medium",
-                  "status": "Mitigated",
                   "description": "ผู้โจมตี flood request ทำให้ค่า SMS พุ่ง",
-                  "mitigation": "Cloudflare + Rate Limit กัน flood. Budget cap กับ provider"
+                  "mitigation": "Cloudflare + Rate Limit กัน flood. Dummy session ไม่ส่ง SMS จริง. Budget cap กับ provider"
                 }
-              ]
-            }
-          },
-          {
-            "position": {
-              "x": 760,
-              "y": 20
-            },
-            "size": {
-              "width": 150,
-              "height": 80
-            },
-            "attrs": {
-              "body": {
-                "stroke": "#333333",
-                "strokeWidth": 1.5,
-                "strokeDasharray": null
+              ],
+              "attrs": {
+                "text": {
+                  "text": "SMS Gateway\n(Twilio / AWS SNS)"
+                }
               }
             },
-            "visible": true,
-            "shape": "actor",
-            "ports": {
-              "groups": {
-                "top": {
-                  "position": "top",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "right": {
-                  "position": "right",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "bottom": {
-                  "position": "bottom",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "left": {
-                  "position": "left",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                }
-              },
-              "items": [
-                {
-                  "group": "top",
-                  "id": "4ca4efb0-5056-4205-bc91-64063d5a3176"
-                },
-                {
-                  "group": "right",
-                  "id": "e763fbee-69cc-4971-a93e-5070fa18da2a"
-                },
-                {
-                  "group": "bottom",
-                  "id": "6ddc1761-4769-4425-9dcc-bb835078d7de"
-                },
-                {
-                  "group": "left",
-                  "id": "16d0cf92-5cd4-403b-a749-f5d39d8b8dfa"
-                }
-              ]
-            },
-            "id": "76f12b64-be67-4828-a88b-fa59fcc25d94",
-            "zIndex": 9,
-            "data": {
+            {
               "type": "tm.Actor",
-              "name": "User Phone\n(SMS Recipient)",
-              "description": "อุปกรณ์ของผู้ใช้ที่รับ OTP SMS",
-              "isTrustBoundary": false,
+              "size": {
+                "width": 160,
+                "height": 80
+              },
+              "position": {
+                "x": 760,
+                "y": 310
+              },
+              "angle": 0,
+              "id": "actor-phone-req",
+              "z": 7,
+              "hasOpenThreats": false,
               "outOfScope": true,
-              "reasonOutOfScope": "อยู่นอก control ของระบบ",
-              "hasOpenThreats": false,
-              "providesAuthentication": false,
-              "threats": []
-            }
-          },
-          {
-            "position": {
-              "x": 760,
-              "y": 280
-            },
-            "size": {
-              "width": 150,
-              "height": 80
-            },
-            "attrs": {
-              "body": {
-                "stroke": "#333333",
-                "strokeWidth": 1.5,
-                "strokeDasharray": null
+              "reasonOutOfScope": "อยู่นอก control ของระบบ — end device ของผู้ใช้",
+              "description": "อุปกรณ์ของผู้ใช้ที่รับ OTP SMS",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "User Phone\n(SMS Recipient)"
+                }
               }
             },
-            "visible": true,
-            "shape": "actor",
-            "ports": {
-              "groups": {
-                "top": {
-                  "position": "top",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "right": {
-                  "position": "right",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "bottom": {
-                  "position": "bottom",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                },
-                "left": {
-                  "position": "left",
-                  "attrs": {
-                    "circle": {
-                      "r": 4,
-                      "magnet": true,
-                      "stroke": "#5F95FF",
-                      "strokeWidth": 1,
-                      "fill": "#fff",
-                      "style": {
-                        "visibility": "hidden"
-                      }
-                    }
-                  }
-                }
-              },
-              "items": [
-                {
-                  "group": "top",
-                  "id": "76b2b78b-5089-4144-81cf-1941b088b28f"
-                },
-                {
-                  "group": "right",
-                  "id": "5b16280e-6e1e-4260-8bca-c30cd5584367"
-                },
-                {
-                  "group": "bottom",
-                  "id": "805a6caf-e649-460a-acfc-c3ed326d9e75"
-                },
-                {
-                  "group": "left",
-                  "id": "35f69263-165d-4a0d-bd7a-b0a0ddaecee9"
-                }
-              ]
-            },
-            "id": "fbc2a895-5768-4390-8990-9d28ea3e1457",
-            "zIndex": 10,
-            "data": {
-              "type": "tm.Actor",
-              "name": "Auth Token\n(JWT / Session)",
-              "description": "Auth Token ที่ออกให้เมื่อ verify สำเร็จเท่านั้น",
-              "isTrustBoundary": false,
-              "outOfScope": false,
-              "reasonOutOfScope": "",
-              "hasOpenThreats": false,
-              "providesAuthentication": false,
-              "threats": []
-            }
-          },
-          {
-            "shape": "flow",
-            "attrs": {
-              "line": {
-                "stroke": "#333333",
-                "targetMarker": {
-                  "name": "block"
-                },
-                "sourceMarker": {
-                  "name": ""
-                },
-                "strokeDasharray": null
-              }
-            },
-            "width": 200,
-            "height": 100,
-            "zIndex": 10,
-            "connector": "smooth",
-            "data": {
+            {
               "type": "tm.Flow",
-              "name": "POST /request + POST /verify",
-              "description": "HTTPS request ผ่าน Cloudflare Edge",
-              "outOfScope": false,
-              "isTrustBoundary": false,
-              "reasonOutOfScope": "",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 195,
+                "y": 255
+              },
+              "angle": 0,
+              "id": "flow-user-cf-req",
+              "z": 8,
               "hasOpenThreats": false,
-              "isBidirectional": false,
+              "outOfScope": false,
               "isEncrypted": true,
               "isPublicNetwork": true,
               "protocol": "HTTPS",
+              "description": "POST /otp/request ผ่าน Cloudflare Edge",
               "threats": [],
-              "trustBoundaryIds": []
-            },
-            "labels": [
-              "POST /request + POST /verify"
-            ],
-            "id": "52ff4480-4613-4aee-8020-b88a5bb0cc52",
-            "source": {
-              "cell": "a4c5f87d-44bd-4b49-a8f7-cf782fae377c",
-              "port": "1699d1fa-62bb-4fb3-873e-e1d29d9f69b2"
-            },
-            "target": {
-              "cell": "5f7c3e87-b98c-484c-ba7d-8b1d5f71150c",
-              "port": "1285f363-51fe-4aae-890b-9a1f0d83f31e"
-            },
-            "vertices": []
-          },
-          {
-            "shape": "flow",
-            "attrs": {
-              "line": {
-                "stroke": "#333333",
-                "targetMarker": {
-                  "name": "block"
-                },
-                "sourceMarker": {
-                  "name": ""
-                },
-                "strokeDasharray": null
+              "attrs": {
+                "text": {
+                  "text": "POST /otp/request"
+                }
+              },
+              "source": {
+                "id": "actor-user-req"
+              },
+              "target": {
+                "id": "proc-cloudflare-req"
               }
             },
-            "width": 200,
-            "height": 100,
-            "zIndex": 10,
-            "connector": "smooth",
-            "data": {
+            {
               "type": "tm.Flow",
-              "name": "forward + CF-Connecting-IP",
-              "description": "Cloudflare forward พร้อม CF-Connecting-IP header",
-              "outOfScope": false,
-              "isTrustBoundary": false,
-              "reasonOutOfScope": "",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 345,
+                "y": 200
+              },
+              "angle": 0,
+              "id": "flow-cf-api-req",
+              "z": 9,
               "hasOpenThreats": false,
-              "isBidirectional": false,
+              "outOfScope": false,
               "isEncrypted": true,
               "isPublicNetwork": false,
-              "protocol": "HTTPS",
+              "protocol": "HTTPS + CF-Connecting-IP",
+              "description": "Cloudflare forward request พร้อม CF-Connecting-IP header ไปยัง NestJS",
               "threats": [],
-              "trustBoundaryIds": []
-            },
-            "labels": [
-              "forward + CF-Connecting-IP"
-            ],
-            "id": "177127b2-5d40-44a2-9ef2-e3c6bf383112",
-            "source": {
-              "cell": "5f7c3e87-b98c-484c-ba7d-8b1d5f71150c",
-              "port": "63a616ce-fb55-4c30-a9d5-85ecd6b800ac"
-            },
-            "target": {
-              "cell": "e4847dd5-8bf7-4f41-8da2-7e52500669d0",
-              "port": "b8a04675-5859-4658-9b22-36ac05aa189c"
-            },
-            "vertices": []
-          },
-          {
-            "shape": "flow",
-            "attrs": {
-              "line": {
-                "stroke": "#333333",
-                "targetMarker": {
-                  "name": "block"
-                },
-                "sourceMarker": {
-                  "name": ""
-                },
-                "strokeDasharray": null
+              "attrs": {
+                "text": {
+                  "text": "forward + CF headers"
+                }
+              },
+              "source": {
+                "id": "proc-cloudflare-req"
+              },
+              "target": {
+                "id": "proc-api-gateway-req"
               }
             },
-            "width": 200,
-            "height": 100,
-            "zIndex": 10,
-            "connector": "smooth",
-            "data": {
+            {
               "type": "tm.Flow",
-              "name": "validated request",
-              "description": "API Gateway ส่ง validated request ไปยัง OTP Service",
-              "outOfScope": false,
-              "isTrustBoundary": false,
-              "reasonOutOfScope": "",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 445,
+                "y": 215
+              },
+              "angle": 0,
+              "id": "flow-api-service-req",
+              "z": 10,
               "hasOpenThreats": false,
-              "isBidirectional": false,
+              "outOfScope": false,
               "isEncrypted": false,
               "isPublicNetwork": false,
               "protocol": "Internal",
+              "description": "API Gateway ส่ง validated request ไปยัง OTP Service",
               "threats": [],
-              "trustBoundaryIds": []
-            },
-            "labels": [
-              "validated request"
-            ],
-            "id": "1bd891fa-c59b-4756-98fb-e88be5823a49",
-            "source": {
-              "cell": "e4847dd5-8bf7-4f41-8da2-7e52500669d0",
-              "port": "10d87556-fe24-4c93-a3d6-1686e1791609"
-            },
-            "target": {
-              "cell": "42f86d46-68a0-425b-938c-f73dfb030f6e",
-              "port": "f559deeb-4c2a-4310-aa3f-cd863a4f44be"
-            },
-            "vertices": []
-          },
-          {
-            "shape": "flow",
-            "attrs": {
-              "line": {
-                "stroke": "#333333",
-                "targetMarker": {
-                  "name": "block"
-                },
-                "sourceMarker": {
-                  "name": ""
-                },
-                "strokeDasharray": null
+              "attrs": {
+                "text": {
+                  "text": "validated request"
+                }
+              },
+              "source": {
+                "id": "proc-api-gateway-req"
+              },
+              "target": {
+                "id": "proc-otp-service-req"
               }
             },
-            "width": 200,
-            "height": 100,
-            "zIndex": 10,
-            "connector": "smooth",
-            "data": {
+            {
               "type": "tm.Flow",
-              "name": "send OTP (HTTPS)",
-              "description": "ส่ง OTP ไปยัง SMS Gateway เฉพาะ request flow",
-              "outOfScope": false,
-              "isTrustBoundary": false,
-              "reasonOutOfScope": "",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 505,
+                "y": 365
+              },
+              "angle": 0,
+              "id": "flow-service-redis-req",
+              "z": 11,
               "hasOpenThreats": false,
-              "isBidirectional": false,
+              "outOfScope": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "Redis Protocol",
+              "description": "บันทึก SHA-256(otp:sessionId) พร้อม TTL",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "save hash + TTL"
+                }
+              },
+              "source": {
+                "id": "proc-otp-service-req"
+              },
+              "target": {
+                "id": "store-redis-req"
+              }
+            },
+            {
+              "type": "tm.Flow",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 630,
+                "y": 210
+              },
+              "angle": 0,
+              "id": "flow-service-sms-req",
+              "z": 12,
+              "hasOpenThreats": true,
+              "outOfScope": false,
               "isEncrypted": true,
               "isPublicNetwork": true,
               "protocol": "HTTPS",
+              "description": "ส่ง OTP ไปยัง SMS Gateway",
               "threats": [
                 {
-                  "id": "2ceaeb5e-c874-4e57-ab5b-0acc7dc5ecc7",
+                  "status": "Mitigated",
+                  "severity": "Medium",
                   "title": "OTP Intercepted in Transit",
                   "type": "Tampering",
-                  "severity": "Medium",
-                  "status": "Mitigated",
                   "description": "OTP ถูก intercept ระหว่างส่งจาก OTP Service ไปยัง SMS Gateway",
                   "mitigation": "ใช้ TLS/HTTPS เสมอสำหรับ API call ไปยัง SMS Gateway"
                 }
               ],
-              "trustBoundaryIds": []
-            },
-            "labels": [
-              "send OTP (HTTPS)"
-            ],
-            "id": "a3032f9a-fe60-4411-b333-eaffa3c8a1ab",
-            "source": {
-              "cell": "42f86d46-68a0-425b-938c-f73dfb030f6e",
-              "port": "c8125d55-5201-4345-aecc-1883f43eaf99"
-            },
-            "target": {
-              "cell": "509ff299-24cc-4188-991c-9912ca2c5932",
-              "port": "d913fac5-934b-417d-ba58-c4587d4fa4d7"
-            },
-            "vertices": []
-          },
-          {
-            "shape": "flow",
-            "attrs": {
-              "line": {
-                "stroke": "#333333",
-                "targetMarker": {
-                  "name": "block"
-                },
-                "sourceMarker": {
-                  "name": ""
-                },
-                "strokeDasharray": null
+              "attrs": {
+                "text": {
+                  "text": "send OTP (HTTPS)"
+                }
+              },
+              "source": {
+                "id": "proc-otp-service-req"
+              },
+              "target": {
+                "id": "actor-sms-req"
               }
             },
-            "width": 200,
-            "height": 100,
-            "zIndex": 10,
-            "connector": "smooth",
-            "data": {
+            {
               "type": "tm.Flow",
-              "name": "SMS Delivery",
-              "description": "SMS Gateway ส่ง OTP ไปยังเบอร์ผู้ใช้",
-              "outOfScope": false,
-              "isTrustBoundary": false,
-              "reasonOutOfScope": "",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 840,
+                "y": 185
+              },
+              "angle": 0,
+              "id": "flow-sms-phone-req",
+              "z": 13,
               "hasOpenThreats": false,
-              "isBidirectional": false,
+              "outOfScope": false,
               "isEncrypted": false,
               "isPublicNetwork": true,
               "protocol": "SMS/Telecom",
+              "description": "SMS Gateway ส่ง OTP ไปยังเบอร์โทรของผู้ใช้",
               "threats": [],
-              "trustBoundaryIds": []
-            },
-            "labels": [
-              "SMS Delivery"
-            ],
-            "id": "4666e73f-0c1b-471c-9627-a30379967796",
-            "source": {
-              "cell": "509ff299-24cc-4188-991c-9912ca2c5932",
-              "port": "0a9f2211-54cc-4ace-9b74-28497536bed5"
-            },
-            "target": {
-              "cell": "76f12b64-be67-4828-a88b-fa59fcc25d94",
-              "port": "16d0cf92-5cd4-403b-a749-f5d39d8b8dfa"
-            },
-            "vertices": []
-          },
-          {
-            "shape": "flow",
-            "attrs": {
-              "line": {
-                "stroke": "#333333",
-                "targetMarker": {
-                  "name": "block"
-                },
-                "sourceMarker": {
-                  "name": ""
-                },
-                "strokeDasharray": null
+              "attrs": {
+                "text": {
+                  "text": "SMS Delivery"
+                }
+              },
+              "source": {
+                "id": "actor-sms-req"
+              },
+              "target": {
+                "id": "actor-phone-req"
               }
             },
-            "width": 200,
-            "height": 100,
-            "zIndex": 10,
-            "connector": "smooth",
-            "data": {
-              "type": "tm.Flow",
-              "name": "save hash / lookup + delete",
-              "description": "Request: save SHA-256(otp:sessionId)+TTL. Verify: lookup+timingSafeEqual+delete on success",
-              "outOfScope": false,
-              "isTrustBoundary": false,
-              "reasonOutOfScope": "",
+            {
+              "type": "tm.Boundary",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 195,
+                "y": 40
+              },
+              "angle": 0,
+              "id": "boundary-user-cf",
+              "z": 0,
+              "attrs": {
+                "text": {
+                  "text": "Public Internet"
+                }
+              },
+              "source": {
+                "x": 195,
+                "y": 40
+              },
+              "target": {
+                "x": 195,
+                "y": 470
+              },
+              "vertices": []
+            },
+            {
+              "type": "tm.Boundary",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 370,
+                "y": 40
+              },
+              "angle": 0,
+              "id": "boundary-cf-internal",
+              "z": 0,
+              "attrs": {
+                "text": {
+                  "text": "Cloudflare / Internal"
+                }
+              },
+              "source": {
+                "x": 370,
+                "y": 40
+              },
+              "target": {
+                "x": 370,
+                "y": 470
+              },
+              "vertices": []
+            },
+            {
+              "type": "tm.Boundary",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 730,
+                "y": 40
+              },
+              "angle": 0,
+              "id": "boundary-internal-3rdparty",
+              "z": 0,
+              "attrs": {
+                "text": {
+                  "text": "Internal / 3rd Party"
+                }
+              },
+              "source": {
+                "x": 730,
+                "y": 40
+              },
+              "target": {
+                "x": 730,
+                "y": 470
+              },
+              "vertices": []
+            }
+          ]
+        },
+        "size": {
+          "height": 530,
+          "width": 1000
+        }
+      },
+      {
+        "title": "Diagram 2 — Verify OTP Flow",
+        "thumbnail": "./public/content/images/thumbnail.stride.jpg",
+        "diagramType": "STRIDE",
+        "id": 1,
+        "diagramJson": {
+          "cells": [
+            {
+              "type": "tm.Actor",
+              "size": {
+                "width": 160,
+                "height": 80
+              },
+              "position": {
+                "x": 30,
+                "y": 220
+              },
+              "angle": 0,
+              "id": "actor-user-ver",
+              "z": 1,
               "hasOpenThreats": false,
-              "isBidirectional": false,
+              "outOfScope": false,
+              "description": "ผู้ใช้ที่ได้รับ OTP SMS แล้วนำมากรอกเพื่อยืนยัน",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "User / Mobile App"
+                }
+              }
+            },
+            {
+              "type": "tm.Process",
+              "size": {
+                "width": 110,
+                "height": 110
+              },
+              "position": {
+                "x": 230,
+                "y": 195
+              },
+              "angle": 0,
+              "id": "proc-cloudflare-ver",
+              "z": 2,
+              "hasOpenThreats": true,
+              "outOfScope": false,
+              "description": "Cloudflare Edge: Rate Limit POST /otp/verify max 5 req/min per IP, WAF, DDoS",
+              "threats": [
+                {
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "title": "Brute Force at Edge",
+                  "type": "Elevation of privilege",
+                  "description": "ผู้โจมตียิง verify request หลาย IP พร้อมกันเพื่อ brute force OTP",
+                  "mitigation": "Cloudflare Rate Limit: POST /otp/verify max 5 req/min per IP. WAF block suspicious patterns"
+                },
+                {
+                  "status": "Mitigated",
+                  "severity": "Medium",
+                  "title": "IP Spoofing via X-Forwarded-For",
+                  "type": "Spoofing",
+                  "description": "ผู้โจมตีปลอม X-Forwarded-For เพื่อ bypass rate limit",
+                  "mitigation": "NestJS อ่าน CF-Connecting-IP header แทน. Whitelist เฉพาะ Cloudflare IP ranges"
+                }
+              ],
+              "attrs": {
+                "text": {
+                  "text": "Cloudflare Edge\n(WAF + Rate Limit)"
+                }
+              }
+            },
+            {
+              "type": "tm.Process",
+              "size": {
+                "width": 110,
+                "height": 110
+              },
+              "position": {
+                "x": 390,
+                "y": 100
+              },
+              "angle": 0,
+              "id": "proc-api-gateway-ver",
+              "z": 3,
+              "hasOpenThreats": true,
+              "outOfScope": false,
+              "description": "NestJS API Gateway: ThrottlerGuard (5 req/min verify), ValidationPipe ตรวจ phone+otp+sessionId format",
+              "threats": [
+                {
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "title": "Brute Force per Phone (Multi-IP)",
+                  "type": "Elevation of privilege",
+                  "description": "โจรใช้หลาย IP bypass Cloudflare rate limit แต่ยัง brute force phone number เดิมได้",
+                  "mitigation": "ThrottlerModule rate limit per phone number ใน NestJS เป็น second layer"
+                },
+                {
+                  "status": "Mitigated",
+                  "severity": "Medium",
+                  "title": "Malformed OTP Input",
+                  "type": "Tampering",
+                  "description": "ส่ง otp ที่ไม่ใช่ตัวเลข 6 หลัก หรือ sessionId ที่ผิดรูปแบบ",
+                  "mitigation": "ValidationPipe + class-validator: @Length(6,6), @Matches(/^\\d{6}$/), @IsUUID()"
+                }
+              ],
+              "attrs": {
+                "text": {
+                  "text": "API Gateway\n(ThrottlerGuard)"
+                }
+              }
+            },
+            {
+              "type": "tm.Process",
+              "size": {
+                "width": 110,
+                "height": 110
+              },
+              "position": {
+                "x": 390,
+                "y": 310
+              },
+              "angle": 0,
+              "id": "proc-otp-service-ver",
+              "z": 4,
+              "hasOpenThreats": true,
+              "outOfScope": false,
+              "description": "OTP Service: ตรวจ lockout, lookup session, timingSafeEqual, one-time delete",
+              "threats": [
+                {
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "title": "Replay Attack",
+                  "type": "Elevation of privilege",
+                  "description": "ผู้โจมตีดัก OTP ที่ถูกต้องแล้วนำกลับมาใช้ซ้ำ",
+                  "mitigation": "OTP ถูก delete ทันทีหลัง verify สำเร็จ (one-time use). TTL 5 นาที. Bind OTP กับ sessionId+phone"
+                },
+                {
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "title": "Timing Attack on OTP Comparison",
+                  "type": "Information disclosure",
+                  "description": "วัดเวลา response ต่างกันระหว่าง OTP ที่ถูก vs ผิด ทำให้รู้ได้ว่า guess ใกล้เคียงแค่ไหน",
+                  "mitigation": "ใช้ timingSafeEqual() จาก Node.js crypto สำหรับ hash comparison เสมอ"
+                },
+                {
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "title": "Progressive Lockout Bypass",
+                  "type": "Elevation of privilege",
+                  "description": "ผู้โจมตีสร้าง session ใหม่ทุกครั้งเพื่อ bypass attempt counter",
+                  "mitigation": "Lockout ผูกกับ phone number ไม่ใช่ session. สร้าง session ใหม่ก็ยัง locked อยู่"
+                },
+                {
+                  "status": "Mitigated",
+                  "severity": "Medium",
+                  "title": "Phone Mismatch Attack",
+                  "type": "Elevation of privilege",
+                  "description": "ผู้โจมตีใช้ sessionId ของคนอื่นแต่ใส่ phone ตัวเอง",
+                  "mitigation": "Verify ตรวจ phone ใน session ต้องตรงกับ phone ที่ส่งมา ถ้าไม่ตรง return generic error"
+                },
+                {
+                  "status": "Mitigated",
+                  "severity": "Medium",
+                  "title": "Information Disclosure via Error Message",
+                  "type": "Information disclosure",
+                  "description": "Error message ต่างกันระหว่าง 'ไม่มี session', 'หมดอายุ', 'OTP ผิด' ทำให้รู้ state ของระบบ",
+                  "mitigation": "คืน generic message 'Invalid or expired OTP' เสมอทุก failure reason"
+                }
+              ],
+              "attrs": {
+                "text": {
+                  "text": "OTP Service\n(Verify Logic)"
+                }
+              }
+            },
+            {
+              "type": "tm.Process",
+              "size": {
+                "width": 110,
+                "height": 110
+              },
+              "position": {
+                "x": 560,
+                "y": 100
+              },
+              "angle": 0,
+              "id": "proc-lockout-ver",
+              "z": 5,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "description": "Progressive Lockout: ติดตาม failed attempts ต่อ phone number. 5 fail=5min, 10 fail=30min, 15 fail=24hr",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "Lockout Manager\n(Progressive)"
+                }
+              }
+            },
+            {
+              "type": "tm.Store",
+              "size": {
+                "width": 160,
+                "height": 80
+              },
+              "position": {
+                "x": 545,
+                "y": 330
+              },
+              "angle": 0,
+              "id": "store-redis-ver",
+              "z": 6,
+              "hasOpenThreats": true,
+              "outOfScope": false,
+              "isALog": false,
+              "storesCredentials": false,
+              "isEncrypted": false,
+              "description": "Redis: lookup hashed OTP, ตรวจ attempts, delete หลัง verify สำเร็จ",
+              "threats": [
+                {
+                  "status": "Mitigated",
+                  "severity": "High",
+                  "title": "Race Condition on Attempt Counter",
+                  "type": "Tampering",
+                  "description": "ยิง verify request พร้อมกันหลาย requests เพื่อ bypass attempt limit",
+                  "mitigation": "Increment attempt counter BEFORE checking (atomic). ใน production ใช้ Redis INCR atomic operation"
+                }
+              ],
+              "attrs": {
+                "text": {
+                  "text": "Redis (OTP Store)\nlookup + delete"
+                }
+              }
+            },
+            {
+              "type": "tm.Store",
+              "size": {
+                "width": 160,
+                "height": 80
+              },
+              "position": {
+                "x": 740,
+                "y": 220
+              },
+              "angle": 0,
+              "id": "store-audit-log",
+              "z": 7,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "isALog": true,
+              "storesCredentials": false,
+              "isEncrypted": false,
+              "description": "Audit Log: บันทึก verify attempts พร้อม timestamp, IP (CF-Connecting-IP), masked phone, success/fail (ไม่ log OTP)",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "Audit Log\n(No OTP Value)"
+                }
+              }
+            },
+            {
+              "type": "tm.Actor",
+              "size": {
+                "width": 160,
+                "height": 80
+              },
+              "position": {
+                "x": 740,
+                "y": 360
+              },
+              "angle": 0,
+              "id": "actor-auth-token",
+              "z": 8,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "description": "Auth Token (JWT/Session) ที่ออกให้เมื่อ verify สำเร็จ",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "Auth Token\n(JWT / Session)"
+                }
+              }
+            },
+            {
+              "type": "tm.Flow",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 195,
+                "y": 255
+              },
+              "angle": 0,
+              "id": "flow-user-cf-ver",
+              "z": 9,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "isEncrypted": true,
+              "isPublicNetwork": true,
+              "protocol": "HTTPS",
+              "description": "POST /otp/verify — ส่ง phone + otp + sessionId",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "POST /otp/verify"
+                }
+              },
+              "source": {
+                "id": "actor-user-ver"
+              },
+              "target": {
+                "id": "proc-cloudflare-ver"
+              }
+            },
+            {
+              "type": "tm.Flow",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 345,
+                "y": 200
+              },
+              "angle": 0,
+              "id": "flow-cf-api-ver",
+              "z": 10,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "isEncrypted": true,
+              "isPublicNetwork": false,
+              "protocol": "HTTPS + CF-Connecting-IP",
+              "description": "Cloudflare forward request พร้อม CF-Connecting-IP header",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "forward + CF headers"
+                }
+              },
+              "source": {
+                "id": "proc-cloudflare-ver"
+              },
+              "target": {
+                "id": "proc-api-gateway-ver"
+              }
+            },
+            {
+              "type": "tm.Flow",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 445,
+                "y": 215
+              },
+              "angle": 0,
+              "id": "flow-api-service-ver",
+              "z": 11,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "Internal",
+              "description": "ส่ง validated phone + otp + sessionId ไปยัง OTP Service",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "validated input"
+                }
+              },
+              "source": {
+                "id": "proc-api-gateway-ver"
+              },
+              "target": {
+                "id": "proc-otp-service-ver"
+              }
+            },
+            {
+              "type": "tm.Flow",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 475,
+                "y": 155
+              },
+              "angle": 0,
+              "id": "flow-service-lockout-ver",
+              "z": 12,
+              "hasOpenThreats": false,
+              "outOfScope": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "Internal",
+              "description": "ตรวจ lockout ก่อน verify และ update fail count หลัง verify ผิด",
+              "threats": [],
+              "attrs": {
+                "text": {
+                  "text": "check + update lockout"
+                }
+              },
+              "source": {
+                "id": "proc-otp-service-ver"
+              },
+              "target": {
+                "id": "proc-lockout-ver"
+              }
+            },
+            {
+              "type": "tm.Flow",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 475,
+                "y": 370
+              },
+              "angle": 0,
+              "id": "flow-service-redis-ver",
+              "z": 13,
+              "hasOpenThreats": false,
+              "outOfScope": false,
               "isEncrypted": false,
               "isPublicNetwork": false,
               "protocol": "Redis Protocol",
+              "description": "lookup session, timingSafeEqual, delete on success",
               "threats": [],
-              "trustBoundaryIds": []
-            },
-            "labels": [
-              "save hash / lookup + delete"
-            ],
-            "id": "f07e7f84-fddc-438f-8018-166a3fa7de61",
-            "source": {
-              "cell": "42f86d46-68a0-425b-938c-f73dfb030f6e",
-              "port": "2b7da6a1-d449-4a31-a1e8-04948f547c1c"
-            },
-            "target": {
-              "cell": "93d83a5f-46a8-4e54-96dc-1f4771f021a3",
-              "port": "0222574c-9321-4a10-a3d2-c54bb670e448"
-            },
-            "vertices": []
-          },
-          {
-            "shape": "flow",
-            "attrs": {
-              "line": {
-                "stroke": "#333333",
-                "targetMarker": {
-                  "name": "block"
-                },
-                "sourceMarker": {
-                  "name": ""
-                },
-                "strokeDasharray": null
+              "attrs": {
+                "text": {
+                  "text": "lookup + delete (one-time)"
+                }
+              },
+              "source": {
+                "id": "proc-otp-service-ver"
+              },
+              "target": {
+                "id": "store-redis-ver"
               }
             },
-            "width": 200,
-            "height": 100,
-            "zIndex": 10,
-            "connector": "smooth",
-            "data": {
+            {
               "type": "tm.Flow",
-              "name": "check + update lockout",
-              "description": "Verify: check lockout ก่อน + update fail count + reset on success",
-              "outOfScope": false,
-              "isTrustBoundary": false,
-              "reasonOutOfScope": "",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 615,
+                "y": 280
+              },
+              "angle": 0,
+              "id": "flow-service-audit",
+              "z": 14,
               "hasOpenThreats": false,
-              "isBidirectional": false,
+              "outOfScope": false,
               "isEncrypted": false,
               "isPublicNetwork": false,
               "protocol": "Internal",
+              "description": "บันทึก audit log ทุก attempt ไม่ว่าจะสำเร็จหรือไม่",
               "threats": [],
-              "trustBoundaryIds": []
-            },
-            "labels": [
-              "check + update lockout"
-            ],
-            "id": "e080ee69-ec0d-4ebf-a8ce-ebff4d938d25",
-            "source": {
-              "cell": "42f86d46-68a0-425b-938c-f73dfb030f6e",
-              "port": "9c32e9ec-744a-4949-a581-672eb1a44653"
-            },
-            "target": {
-              "cell": "94577c45-e037-4875-b5b4-91f0af08769f",
-              "port": "12967e18-c80a-41ee-a821-5d4dc6049e25"
-            },
-            "vertices": []
-          },
-          {
-            "shape": "flow",
-            "attrs": {
-              "line": {
-                "stroke": "#333333",
-                "targetMarker": {
-                  "name": "block"
-                },
-                "sourceMarker": {
-                  "name": ""
-                },
-                "strokeDasharray": null
+              "attrs": {
+                "text": {
+                  "text": "log attempt (no OTP)"
+                }
+              },
+              "source": {
+                "id": "proc-otp-service-ver"
+              },
+              "target": {
+                "id": "store-audit-log"
               }
             },
-            "width": 200,
-            "height": 100,
-            "zIndex": 10,
-            "connector": "smooth",
-            "data": {
+            {
               "type": "tm.Flow",
-              "name": "log attempt (no OTP)",
-              "description": "บันทึก audit log ทุก attempt ทั้ง request และ verify",
-              "outOfScope": false,
-              "isTrustBoundary": false,
-              "reasonOutOfScope": "",
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 615,
+                "y": 390
+              },
+              "angle": 0,
+              "id": "flow-service-authtoken",
+              "z": 15,
               "hasOpenThreats": false,
-              "isBidirectional": false,
+              "outOfScope": false,
               "isEncrypted": false,
               "isPublicNetwork": false,
               "protocol": "Internal",
-              "threats": [],
-              "trustBoundaryIds": []
-            },
-            "labels": [
-              "log attempt (no OTP)"
-            ],
-            "id": "103f09fc-aa0d-4888-b237-6f07d20f48a9",
-            "source": {
-              "cell": "42f86d46-68a0-425b-938c-f73dfb030f6e",
-              "port": "2b7da6a1-d449-4a31-a1e8-04948f547c1c"
-            },
-            "target": {
-              "cell": "5f539ce7-b558-45e5-924e-562026b64710",
-              "port": "1efa1e21-0bc8-4720-80a3-4d0db644952d"
-            },
-            "vertices": []
-          },
-          {
-            "shape": "flow",
-            "attrs": {
-              "line": {
-                "stroke": "#333333",
-                "targetMarker": {
-                  "name": "block"
-                },
-                "sourceMarker": {
-                  "name": ""
-                },
-                "strokeDasharray": null
-              }
-            },
-            "width": 200,
-            "height": 100,
-            "zIndex": 10,
-            "connector": "smooth",
-            "data": {
-              "type": "tm.Flow",
-              "name": "issue token (on success)",
               "description": "ออก Auth Token เมื่อ verify สำเร็จเท่านั้น",
-              "outOfScope": false,
-              "isTrustBoundary": false,
-              "reasonOutOfScope": "",
-              "hasOpenThreats": false,
-              "isBidirectional": false,
-              "isEncrypted": false,
-              "isPublicNetwork": false,
-              "protocol": "Internal",
               "threats": [],
-              "trustBoundaryIds": []
-            },
-            "labels": [
-              "issue token (on success)"
-            ],
-            "id": "dda980f6-39d3-43e2-bedb-f11e14263954",
-            "source": {
-              "cell": "42f86d46-68a0-425b-938c-f73dfb030f6e",
-              "port": "2b7da6a1-d449-4a31-a1e8-04948f547c1c"
-            },
-            "target": {
-              "cell": "fbc2a895-5768-4390-8990-9d28ea3e1457",
-              "port": "35f69263-165d-4a0d-bd7a-b0a0ddaecee9"
-            },
-            "vertices": []
-          },
-          {
-            "shape": "trust-boundary-curve",
-            "attrs": {
-              "line": {
-                "stroke": "#FF6600",
-                "strokeDasharray": "4 4",
-                "targetMarker": {
-                  "name": ""
-                },
-                "sourceMarker": {
-                  "name": ""
+              "attrs": {
+                "text": {
+                  "text": "issue token (on success)"
                 }
+              },
+              "source": {
+                "id": "proc-otp-service-ver"
+              },
+              "target": {
+                "id": "actor-auth-token"
               }
             },
-            "width": 200,
-            "height": 100,
-            "zIndex": 0,
-            "connector": "smooth",
-            "data": {
+            {
               "type": "tm.Boundary",
-              "name": "Public Internet",
-              "description": "",
-              "isTrustBoundary": true,
-              "threats": []
-            },
-            "labels": [
-              "Public Internet"
-            ],
-            "id": "6df5a8c0-331a-473c-949e-f1633ef448c3",
-            "source": {
-              "x": 195,
-              "y": 10
-            },
-            "target": {
-              "x": 195,
-              "y": 560
-            },
-            "vertices": []
-          },
-          {
-            "shape": "trust-boundary-curve",
-            "attrs": {
-              "line": {
-                "stroke": "#FF6600",
-                "strokeDasharray": "4 4",
-                "targetMarker": {
-                  "name": ""
-                },
-                "sourceMarker": {
-                  "name": ""
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 195,
+                "y": 40
+              },
+              "angle": 0,
+              "id": "boundary-ver-user-cf",
+              "z": 0,
+              "attrs": {
+                "text": {
+                  "text": "Public Internet"
                 }
-              }
+              },
+              "source": {
+                "x": 195,
+                "y": 40
+              },
+              "target": {
+                "x": 195,
+                "y": 490
+              },
+              "vertices": []
             },
-            "width": 200,
-            "height": 100,
-            "zIndex": 0,
-            "connector": "smooth",
-            "data": {
+            {
               "type": "tm.Boundary",
-              "name": "Cloudflare / Internal",
-              "description": "",
-              "isTrustBoundary": true,
-              "threats": []
-            },
-            "labels": [
-              "Cloudflare / Internal"
-            ],
-            "id": "34dc6728-ebc1-4733-ae20-1d78fe19901d",
-            "source": {
-              "x": 375,
-              "y": 10
-            },
-            "target": {
-              "x": 375,
-              "y": 560
-            },
-            "vertices": []
-          },
-          {
-            "shape": "trust-boundary-curve",
-            "attrs": {
-              "line": {
-                "stroke": "#FF6600",
-                "strokeDasharray": "4 4",
-                "targetMarker": {
-                  "name": ""
-                },
-                "sourceMarker": {
-                  "name": ""
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 370,
+                "y": 40
+              },
+              "angle": 0,
+              "id": "boundary-ver-cf-internal",
+              "z": 0,
+              "attrs": {
+                "text": {
+                  "text": "Cloudflare / Internal"
                 }
-              }
+              },
+              "source": {
+                "x": 370,
+                "y": 40
+              },
+              "target": {
+                "x": 370,
+                "y": 490
+              },
+              "vertices": []
             },
-            "width": 200,
-            "height": 100,
-            "zIndex": 0,
-            "connector": "smooth",
-            "data": {
+            {
               "type": "tm.Boundary",
-              "name": "Internal / 3rd Party",
-              "description": "",
-              "isTrustBoundary": true,
-              "threats": []
-            },
-            "labels": [
-              "Internal / 3rd Party"
-            ],
-            "id": "169075ed-254e-4750-8ffa-ef968d25c088",
-            "source": {
-              "x": 555,
-              "y": 10
-            },
-            "target": {
-              "x": 555,
-              "y": 560
-            },
-            "vertices": []
-          }
-        ]
+              "size": {
+                "width": 10,
+                "height": 10
+              },
+              "position": {
+                "x": 715,
+                "y": 40
+              },
+              "angle": 0,
+              "id": "boundary-ver-internal-output",
+              "z": 0,
+              "attrs": {
+                "text": {
+                  "text": "Internal / Output"
+                }
+              },
+              "source": {
+                "x": 715,
+                "y": 40
+              },
+              "target": {
+                "x": 715,
+                "y": 490
+              },
+              "vertices": []
+            }
+          ]
+        },
+        "size": {
+          "height": 530,
+          "width": 980
+        }
       }
     ],
-    "diagramTop": 1,
     "reviewer": "",
-    "threatTop": 0
+    "threatTop": 20
   }
 }
